@@ -1,0 +1,247 @@
+<?php
+/**
+ * Admin settings page for Peptide Search AI.
+ * Configured for OpenRouter API access.
+ *
+ * @package PeptideSearchAI
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+class PSA_Admin {
+
+    public static function init() {
+        add_action( 'admin_menu', array( __CLASS__, 'add_menu_pages' ) );
+        add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+    }
+
+    /**
+     * Add settings page under Settings menu.
+     */
+    public static function add_menu_pages() {
+        add_options_page(
+            __( 'Peptide Search AI', 'peptide-search-ai' ),
+            __( 'Peptide Search AI', 'peptide-search-ai' ),
+            'manage_options',
+            'peptide-search-ai',
+            array( __CLASS__, 'render_settings_page' )
+        );
+    }
+
+    /**
+     * Register settings fields.
+     */
+    public static function register_settings() {
+        register_setting(
+			'psa_settings_group',
+			'psa_settings',
+			array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_settings' ),
+			)
+		);
+
+        // OpenRouter Section.
+        add_settings_section(
+			'psa_ai_section',
+			__( 'OpenRouter API Settings', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_section_description' ),
+			'peptide-search-ai'
+		);
+        add_settings_field(
+			'api_key',
+			__( 'API Key', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_api_key_field' ),
+			'peptide-search-ai',
+			'psa_ai_section'
+		);
+        add_settings_field(
+			'ai_model',
+			__( 'Generation Model', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_model_field' ),
+			'peptide-search-ai',
+			'psa_ai_section'
+		);
+        add_settings_field(
+			'validation_model',
+			__( 'Validation Model', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_validation_model_field' ),
+			'peptide-search-ai',
+			'psa_ai_section'
+		);
+
+        // Behavior Section.
+        add_settings_section(
+			'psa_behavior_section',
+			__( 'Behavior Settings', 'peptide-search-ai' ),
+			null,
+			'peptide-search-ai'
+		);
+        add_settings_field(
+			'auto_publish',
+			__( 'Auto-Publish', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_publish_field' ),
+			'peptide-search-ai',
+			'psa_behavior_section'
+		);
+        add_settings_field(
+			'use_pubchem',
+			__( 'PubChem Enrichment', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_pubchem_field' ),
+			'peptide-search-ai',
+			'psa_behavior_section'
+		);
+    }
+
+    /**
+     * Sanitize settings input.
+     *
+     * @param array $input Raw input from the form.
+     * @return array Sanitized settings.
+     */
+    public static function sanitize_settings( $input ) {
+        return array(
+            'api_key'          => sanitize_text_field( $input['api_key'] ?? '' ),
+            'ai_model'         => sanitize_text_field( $input['ai_model'] ?? '' ),
+            'validation_model' => sanitize_text_field( $input['validation_model'] ?? '' ),
+            'auto_publish'     => sanitize_text_field( $input['auto_publish'] ?? 'draft' ),
+            // Checkbox: if key is absent in POST, it was unchecked → '0'.
+            'use_pubchem'      => ! empty( $input['use_pubchem'] ) ? '1' : '0',
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Field renderers
+    // -------------------------------------------------------------------------
+
+    public static function render_section_description() {
+        ?>
+        <p>
+            <?php
+            printf(
+                __( 'This plugin uses <a href="%s" target="_blank" rel="noopener">OpenRouter</a> to access AI models. OpenRouter provides a unified API for hundreds of models including open-source options like Gemini Flash, Llama, Mistral, Qwen, and DeepSeek, as well as commercial models.', 'peptide-search-ai' ),
+                escourl( 'https://openrouter.ai/' )
+            );
+            ?>
+        </p>
+        <?php
+    }
+
+    public static function render_api_key_field() {
+        if ( defined( 'PSA_OPENROUTER_KEY' ) && PSA_OPENROUTER_KEY ) {
+            ?>
+            <span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span>
+            <strong><?php esc_html_e( 'Configured via wp-config.php', 'peptide-search-ai' ); ?></strong>
+            <p class="description"><?php esc_html_e( 'The API key is securely set using the PSA_OPENROUTER_KEY constant in wp-config.php. This is the recommended approach.', 'peptide-search-ai' ); ?></p>
+            <?php
+        } else {
+            $value = self::get_setting( 'api_key', '' );
+            ?>
+            <input type="password" name="psa_settings[api_key]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" autocomplete="off" />
+            <p class="description">
+                <?php esc_html_e( 'Your OpenRouter API key. Get one at', 'peptide-search-ai' ); ?>
+                <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">openrouter.ai/settings/keys</a>.<br />
+                <strong><?php esc_html_e( 'Recommended:', 'peptide-search-ai' ); ?></strong> <?php esc_html_e( 'For better security, add', 'peptide-search-ai' ); ?> <code>define( 'PSA_OPENROUTER_KEY', 'your-key-here' );</code> <?php esc_html_e( 'to your wp-config.php instead.', 'peptide-search-ai' ); ?>
+            </p>
+            <?php
+        }
+    }
+
+    public static function render_model_field() {
+        $value = self::get_setting( 'ai_model', '' );
+        ?>
+        <input type="text" name="psa_settings[ai_model]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Leave blank for default', 'peptide-search-ai' ); ?>" />
+        <p class="description">
+            <?php esc_html_e( 'Model for full content generation. Default:', 'peptide-search-ai' ); ?> <code>google/gemini-2.5-flash</code>.<br />
+            <?php esc_html_e( 'Browse models at', 'peptide-search-ai' ); ?> <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.
+            <?php esc_html_e( 'Examples:', 'peptide-search-ai' ); ?> <code>meta-llama/llama-4-maverick</code>, <code>deepseek/deepseek-chat-v3-0324</code>, <code>qwen/qwen-2.5-72b-instruct</code>.
+        </p>
+        <?php
+    }
+
+    public static function render_validation_model_field() {
+        $value = self::get_setting( 'validation_model', '' );
+        ?>
+        <input type="text" name="psa_settings[validation_model]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Leave blank for default (fast/cheap model)', 'peptide-search-ai' ); ?>" />
+        <p class="description">
+            <?php esc_html_e( 'Lighter model for peptide name validation. Default:', 'peptide-search-ai' ); ?> <code>google/gemini-2.0-flash-001</code>.<br />
+            <?php esc_html_e( 'Use a fast, cheap model here to keep validation quick. Examples:', 'peptide-search-ai' ); ?> <code>meta-llama/llama-4-scout</code>, <code>mistralai/mistral-small-3.1-24b-instruct</code>.
+        </p>
+        <?php
+    }
+
+    public static function render_publish_field() {
+        $value = self::get_setting( 'auto_publish', 'draft' );
+        ?>
+        <select name="psa_settings[auto_publish]">
+            <option value="draft" <?php selected( $value, 'draft' ); ?>><?php esc_html_e( 'Save as Draft (review before publishing)', 'peptide-search-ai' ); ?></option>
+            <option value="publish" <?php selected( $value, 'publish' ); ?>><?php esc_html_e( 'Publish Immediately', 'peptide-search-ai' ); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e( 'Whether AI-generated peptides are published immediately or saved as drafts for review.', 'peptide-search-ai' ); ?></p>
+        <?php
+    }
+
+    public static function render_pubchem_field() {
+        $value = self::get_setting( 'use_pubchem', '1' );
+        ?>
+        <label>
+            <input type="checkbox" name="psa_settings[use_pubchem]" value="1" <?php checked( $value, '1' ); ?> />
+            <?php esc_html_e( 'Cross-reference with PubChem for verified molecular data', 'peptide-search-ai' ); ?>
+        </label>
+        <p class="description"><?php esc_html_e( 'When enabled, the plugin queries PubChem\'s free API to validate molecular weight, formula, and other properties.', 'peptide-search-ai' ); ?></p>
+        <?php
+    }
+
+    // -------------------------------------------------------------------------
+    // Settings page
+    // -------------------------------------------------------------------------
+
+    public static function render_settings_page() {
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Peptide Search AI Settings', 'peptide-search-ai' ); ?></h1>
+
+            <form method="post" action="options.php">
+                <?php
+                settings_fields( 'psa_settings_group' );
+                do_settings_sections( 'peptide-search-ai' );
+                submit_button();
+                ?>
+            </form>
+
+            <hr />
+            <h2><?php esc_html_e( 'How It Works', 'peptide-search-ai' ); ?></h2>
+            <ol style="max-width:600px; line-height:1.8;">
+                <li><?php esc_html_e( 'Add the shortcode [peptide_search] to any page.', 'peptide-search-ai' ); ?></li>
+                <li><?php esc_html_e( 'Visitors search for a peptide name.', 'peptide-search-ai' ); ?></li>
+                <li><?php esc_html_e( 'If found, results appear instantly.', 'peptide-search-ai' ); ?></li>
+                <li><?php esc_html_e( 'If not found, the system automatically validates the name, creates a placeholder, and generates content in the background.', 'peptide-search-ai' ); ?></li>
+                <li><?php esc_html_e( 'The visitor sees a "being added" message and can check back later.', 'peptide-search-ai' ); ?></li>
+            </ol>
+
+            <hr />
+            <h2><?php esc_html_e( 'Shortcode', 'peptide-search-ai' ); ?></h2>
+            <p><code>[peptide_search]</code></p>
+            <p><?php esc_html_e( 'Customize placeholder:', 'peptide-search-ai' ); ?> <code>[peptide_search placeholder="Search peptides..."]</code></p>
+
+            <hr />
+            <h2><?php esc_html_e( 'REST API', 'peptide-search-ai' ); ?></h2>
+            <p><code>GET /wp-json/peptides/v1/search?q=BPC-157</code></p>
+            <p class="description"><?php esc_html_e( 'The REST endpoint returns published peptides only — it does not trigger auto-generation.', 'peptide-search-ai' ); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Helper to get a single setting with a default.
+     *
+     * @param string $key     Setting key.
+     * @param mixed  $default Default value.
+     * @return mixed
+     */
+    private static function get_setting( $key, $default = '' ) {
+        $options = get_option( 'psa_settings', array() );
+        return $options[ $key ] ?? $default;
+    }
+}

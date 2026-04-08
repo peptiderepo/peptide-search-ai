@@ -1,0 +1,387 @@
+/* ==========================================================================
+   Peptide Search AI — Frontend Styles
+   ========================================================================== */
+
+/* --- Search Form --- */
+.psa-search-wrap {
+    max-width: 720px;
+    margin: 2rem auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+.psa-search-form {
+    margin-bottom: 1.5rem;
+}
+
+.psa-search-input-wrap {
+    display: flex;
+    gap: 0;
+    border: 2px solid #2563eb;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.psa-search-input-wrap:focus-within {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.psa-search-input {
+    flex: 1;
+    padding: 14px 18px;
+    font-size: 16px;
+    border: none;
+    outline: none;
+    background: #fff;
+    color: #1e293b;
+}
+
+.psa-search-input::placeholder {
+    color: #94a3b8;
+}
+
+.psa-search-input:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.psa-search-btn {
+    padding: 14px 24px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.psa-search-btn:hover {
+    background: #1d4ed8;
+}
+
+.psa-search-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+}
+
+.psa-search-icon {
+    margin-right: 4px;
+}
+
+/* --- Search Results --- */
+.psa-search-results {
+    margin-top: 1rem;
+}
+
+.psa-result-count {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 1rem;
+}
+
+.psa-result-item {
+    display: block;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.psa-result-item:hover {
+    border-color: #2563eb;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.psa-result-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 6px;
+}
+
+.psa-result-meta {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.psa-result-meta span {
+    margin-right: 16px;
+}
+
+.psa-result-excerpt {
+    font-size: 14px;
+    color: #475569;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.psa-result-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.psa-badge-ai {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.psa-badge-verified {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.psa-badge-manual {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* --- Checking / Loading State --- */
+.psa-checking {
+    margin-top: 1.5rem;
+}
+
+.psa-checking-inner {
+    text-align: center;
+    padding: 32px 24px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.psa-checking-inner p {
+    margin: 12px 0 0;
+    font-size: 15px;
+    color: #64748b;
+}
+
+/* --- Spinner --- */
+.psa-spinner {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    border: 4px solid #bfdbfe;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: psa-spin 0.8s linear infinite;
+}
+
+@keyframes psa-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- Pending / Being Added Page --- */
+.psa-pending {
+    margin-top: 1.5rem;
+}
+
+.psa-pending-inner {
+    text-align: center;
+    padding: 40px 32px;
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 16px;
+}
+
+.psa-pending-icon {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.psa-pending-inner h3 {
+    margin: 0 0 12px;
+    font-size: 21px;
+    color: #1e40af;
+    font-weight: 700;
+}
+
+.psa-pending-inner > p {
+    margin: 0 0 28px;
+    font-size: 15px;
+    color: #3b82f6;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+}
+
+
+/* --- Invalid Peptide --- */
+.psa-invalid {
+    margin-top: 1.5rem;
+}
+
+.psa-invalid-inner {
+    text-align: center;
+    padding: 32px 24px;
+    background: #fafafa;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.psa-invalid-inner h3 {
+    margin: 0 0 12px;
+    font-size: 20px;
+    color: #334155;
+}
+
+.psa-invalid-inner p {
+    margin: 0;
+    font-size: 15px;
+    color: #64748b;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+}
+
+/* --- Error State --- */
+.psa-error {
+    margin-top: 1.5rem;
+    padding: 16px 20px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    color: #991b1b;
+    font-size: 14px;
+}
+
+/* --- Single Peptide Page Data --- */
+.psa-peptide-data {
+    margin-top: 2rem;
+}
+
+.psa-quick-facts {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 2rem;
+}
+
+.psa-quick-facts h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.psa-facts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.psa-facts-table th {
+    text-align: left;
+    padding: 8px 16px 8px 0;
+    font-weight: 600;
+    color: #475569;
+    width: 180px;
+    vertical-align: top;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+}
+
+.psa-facts-table td {
+    padding: 8px 0;
+    color: #1e293b;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+}
+
+.psa-facts-table tr:last-child th,
+.psa-facts-table tr:last-child td {
+    border-bottom: none;
+}
+
+.psa-sequence {
+    font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    word-break: break-all;
+    background: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.psa-section {
+    margin-bottom: 2rem;
+}
+
+.psa-section h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #2563eb;
+}
+
+.psa-section-content {
+    font-size: 15px;
+    line-height: 1.77
+    color: #334155;
+}
+
+.psa-source-badge {
+    margin-top: 2rem;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.psa-source-badge.psa-badge-ai {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+
+.psa-source-badge.psa-badge-verified {
+    background: #ecfdf5;
+    border: 1px solid #6ee7b7;
+    color: #065f46;
+}
+
+.psa-source-badge.psa-badge-manual {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+    .psa-search-input-wrap,
+    .psa-notify-input-wrap {
+        flex-direction: column;
+    }
+
+    .psa-search-btn,
+    .psa-notify-btn {
+        border-radius: 0;
+    }
+
+    .psa-facts-table th {
+        width: 120px;
+    }
+
+    .psa-pending-inner {
+        padding: 28px 20px;
+    }
+}
