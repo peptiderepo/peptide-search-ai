@@ -35,5 +35,4 @@ class PSA_Error {
 			$http_code
 		);
 	}
-
 }

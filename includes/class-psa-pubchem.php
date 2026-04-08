@@ -67,7 +67,8 @@ class PSA_PubChem {
 		$properties['cid'] = $cid;
 
 		// Cache successful lookups for 7 days.
-		set_transient( $cache_key, $properties, PSA_Config::PUBCHEM_CACHE_TTL ?: 7 * DAY_IN_SECONDS );
+		$ttl = PSA_Config::PUBCHEM_CACHE_TTL ? PSA_Config::PUBCHEM_CACHE_TTL : 7 * DAY_IN_SECONDS;
+		set_transient( $cache_key, $properties, $ttl );
 
 		return $properties;
 	}

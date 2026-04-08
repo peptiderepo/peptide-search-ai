@@ -95,8 +95,12 @@ class PSA_Post_Type {
 		wp_nonce_field( 'psa_save_meta', 'psa_meta_nonce' );
 
 		$textarea_fields = array(
-			'psa_sequence', 'psa_mechanism', 'psa_research_apps',
-			'psa_safety_profile', 'psa_dosage_info', 'psa_references',
+			'psa_sequence',
+			'psa_mechanism',
+			'psa_research_apps',
+			'psa_safety_profile',
+			'psa_dosage_info',
+			'psa_references',
 		);
 
 		echo '<table class="form-table">';
@@ -106,7 +110,7 @@ class PSA_Post_Type {
 			echo '<th><label for="' . esc_attr( $key ) . '">' . esc_html( $label ) . '</label></th>';
 			echo '<td>';
 
-			if ( $key === 'psa_source' ) {
+			if ( 'psa_source' === $key ) {
 				$options = array(
 					''             => '— Select —',
 					'ai-generated' => 'AI Generated',
