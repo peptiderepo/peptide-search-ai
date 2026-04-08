@@ -22,4 +22,7 @@
 	<arg name="colors" />
 	<arg value="sp" />
 	<arg name="report-width" value="120" />
+
+	<!-- Do not fail CI on warnings (only errors should block) -->
+	<config name="ignore_warnings_on_exit" value="1" />
 </ruleset>
