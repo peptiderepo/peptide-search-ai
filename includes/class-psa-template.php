@@ -101,9 +101,18 @@ class PSA_Template {
 		// Source badge.
 		if ( $source && 'pending' !== $source ) {
 			$badges = array(
-				'ai-generated' => array( 'label' => 'AI-Generated Content', 'class' => 'psa-badge-ai' ),
-				'pubchem'      => array( 'label' => 'PubChem Verified', 'class' => 'psa-badge-verified' ),
-				'manual'       => array( 'label' => 'Manually Curated', 'class' => 'psa-badge-manual' ),
+				'ai-generated' => array(
+					'label' => 'AI-Generated Content',
+					'class' => 'psa-badge-ai',
+				),
+				'pubchem'      => array(
+					'label' => 'PubChem Verified',
+					'class' => 'psa-badge-verified',
+				),
+				'manual'       => array(
+					'label' => 'Manually Curated',
+					'class' => 'psa-badge-manual',
+				),
 			);
 			$badge = $badges[ $source ] ?? $badges['ai-generated'];
 
