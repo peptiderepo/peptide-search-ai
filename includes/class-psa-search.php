@@ -46,7 +46,7 @@ class PSA_Search {
 
 	/**
 	 * Register REST API routes for external/headless access.
-	 * Note: REST route only returns existing published results â€” it does NOT trigger generation.
+	 * Note: REST route only returns existing published results — it does NOT trigger generation.
 	 */
 	public static function register_rest_routes() {
 		register_rest_route(
@@ -70,7 +70,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * REST search callback â€” returns published peptides only (no generation trigger).
+	 * REST search callback — returns published peptides only (no generation trigger).
 	 *
 	 * @param WP_REST_Request $request The REST request.
 	 * @return WP_REST_Response
@@ -190,7 +190,7 @@ class PSA_Search {
 			return;
 		}
 
-		// 2. Check if already pending â€” handles retries if timed out.
+		// 2. Check if already pending — handles retries if timed out.
 		$pending = self::find_pending_peptide( $query );
 		if ( $pending ) {
 			self::handle_pending_retry( $pending );
@@ -214,7 +214,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Handle a pending peptide â€” retry if timed out, else return pending status.
+	 * Handle a pending peptide — retry if timed out, else return pending status.
 	 *
 	 * @param WP_Post $pending The pending post.
 	 * @return void Exits with wp_send_json_success().
@@ -226,7 +226,7 @@ class PSA_Search {
 
 		if ( $timed_out ) {
 			if ( $retry_count >= PSA_Config::MAX_GENERATION_RETRIES ) {
-				// Max retries exceeded â€” mark as failed.
+				// Max retries exceeded — mark as failed.
 				error_log( 'PSA: Max retries (' . PSA_Config::MAX_GENERATION_RETRIES . ') exceeded for "' . $pending->post_title . '" (post ' . $pending->ID . '). Marking as failed.' );
 				update_post_meta( $pending->ID, 'psa_source', 'failed' );
 				update_post_meta( $pending->ID, 'psa_generation_error', 'Generation failed after ' . PSA_Config::MAX_GENERATION_RETRIES . ' attempts.' );
@@ -267,7 +267,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Handle a new generation request â€” validate, create placeholder, and schedule generation.
+	 * Handle a new generation request — validate, create placeholder, and schedule generation.
 	 *
 	 * @param string $query The search query (peptide name).
 	 * @return void Exits with wp_send_json_* responses.
@@ -276,9 +276,8 @@ class PSA_Search {
 		// Validate peptide name via AI.
 		$validation = PSA_AI_Generator::validate_peptide_name( $query );
 
-
-		 if ( is_wp_error( $validation ) ) {
-			error_log( 'PSA: Validation error for ""' . $query . '": ' . $validation->get_error_message() );
+		if ( is_wp_error( $validation ) ) {
+			error_log( 'PSA: Validation error for "' . $query . '": ' . $validation->get_error_message() );
 			wp_send_json_success(
 				array(
 					'status'  => 'invalid',
@@ -296,7 +295,7 @@ class PSA_Search {
 			);
 		}
 
-		// It's a real peptide â€” increment rate limit and create placeholder.
+		// It's a real peptide — increment rate limit and create placeholder.
 		$ip       = psa_get_client_ip();
 		$rate_key = 'psa_rate_' . md5( $ip );
 		$count    = (int) get_transient( $rate_key );
@@ -305,27 +304,24 @@ class PSA_Search {
 		$canonical_name = sanitize_text_field( $validation['canonical_name'] ?? $query );
 		$placeholder_id = self::create_pending_placeholder( $canonical_name );
 
-
 		if ( is_wp_error( $placeholder_id ) ) {
 			wp_send_json_error( 'Failed to create peptide entry. Please try again.' );
 		}
 
-
 		// Schedule async background generation.
-		error_log( 'PSA: Scheduling async generation for  "' . $canonical_name . '" (post ' . $placeholder_id . ')' );
+		error_log( 'PSA: Scheduling async generation for "' . $canonical_name . '" (post ' . $placeholder_id . ')' );
 		self::schedule_background_generation( $placeholder_id, $canonical_name );
-
 
 		wp_send_json_success(
 			array(
 				'status'       => 'pending',
 				'peptide_name' => $canonical_name,
 			)
-		),
-		}
+		);
+	}
 
 	/**
-	 * Find an&nbsp;existing pending peptide post by name.
+	 * Find an existing pending peptide post by name.
 	 *
 	 * Performs a multi-table query to locate pending draft posts by title or alias.
 	 * Queries the posts table joined with postmeta for 'psa_source' = 'pending' status,
@@ -337,9 +333,7 @@ class PSA_Search {
 	public static function find_pending_peptide( $query ) {
 		global $wpdb;
 
-
 		$like = '%' . $wpdb->esc_like( $query ) . '%';
-
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$post_id = $wpdb->get_var(
@@ -388,12 +382,11 @@ class PSA_Search {
 			do_action( 'psa_peptide_created', $post_id, $peptide_name );
 		}
 
-
 		return $post_id;
 	}
 
 	/**
-	 * Schedule background generation using WP-Cron (n¢blocking).
+	 * Schedule background generation using WP-Cron (non-blocking).
 	 *
 	 * @param int    $post_id      The placeholder post ID.
 	 * @param string $peptide_name The peptide to research.
@@ -407,7 +400,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Core search logic â€” queries CPT by title and aliases (published only).
+	 * Core search logic — queries CPT by title and aliases (published only).
 	 * Includes transient caching and batch post/meta priming to avoid N+1 queries.
 	 *
 	 * @param string $query Search term.
@@ -416,16 +409,14 @@ class PSA_Search {
 	public static function search_peptides( $query ) {
 		global $wpdb;
 
-
 		// Check transient cache first.
 		$cache_key = 'psa_search_' . md5( sanitize_text_field( $query ) );
 		$cached    = get_transient( $cache_key );
-		 if ( false !== $cached ) {
+		if ( false !== $cached ) {
 			return $cached;
 		}
 
 		$like = '%' . $wpdb->esc_like( $query ) . '%';
-
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$post_ids = $wpdb->get_col(
@@ -449,7 +440,6 @@ class PSA_Search {
 			update_meta_cache( 'post', $post_ids );
 		}
 
-
 		$results = array();
 		foreach ( $post_ids as $id ) {
 			$results[] = self::format_peptide( (int) $id );
@@ -467,7 +457,6 @@ class PSA_Search {
 		// Allow filtering of search results before return.
 		$response = apply_filters( 'psa_search_results', $response, $query );
 
-
 		return $response;
 	}
 
@@ -482,7 +471,6 @@ class PSA_Search {
 		if ( ! $post ) {
 			return array();
 		}
-
 
 		return array(
 			'id'                => $post->ID,
