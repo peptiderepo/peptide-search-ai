@@ -46,7 +46,7 @@ class PSA_Search {
 
 	/**
 	 * Register REST API routes for external/headless access.
-	 * Note: REST route only returns existing published results — it does NOT trigger generation.
+	 * Note: REST route only returns existing published results â€” it does NOT trigger generation.
 	 */
 	public static function register_rest_routes() {
 		register_rest_route(
@@ -70,7 +70,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * REST search callback — returns published peptides only (no generation trigger).
+	 * REST search callback â€” returns published peptides only (no generation trigger).
 	 *
 	 * @param WP_REST_Request $request The REST request.
 	 * @return WP_REST_Response
@@ -102,6 +102,7 @@ class PSA_Search {
 
 		$results = self::search_peptides( $query );
 		return new WP_REST_Response( $results, 200 );
+	}
 
 	/**
 	 * Render the [peptide_search] shortcode.
@@ -189,7 +190,7 @@ class PSA_Search {
 			return;
 		}
 
-		// 2. Check if already pending — handles retries if timed out.
+		// 2. Check if already pending â€” handles retries if timed out.
 		$pending = self::find_pending_peptide( $query );
 		if ( $pending ) {
 			self::handle_pending_retry( $pending );
@@ -213,7 +214,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Handle a pending peptide — retry if timed out, else return pending status.
+	 * Handle a pending peptide â€” retry if timed out, else return pending status.
 	 *
 	 * @param WP_Post $pending The pending post.
 	 * @return void Exits with wp_send_json_success().
@@ -225,7 +226,7 @@ class PSA_Search {
 
 		if ( $timed_out ) {
 			if ( $retry_count >= PSA_Config::MAX_GENERATION_RETRIES ) {
-				// Max retries exceeded — mark as failed.
+				// Max retries exceeded â€” mark as failed.
 				error_log( 'PSA: Max retries (' . PSA_Config::MAX_GENERATION_RETRIES . ') exceeded for "' . $pending->post_title . '" (post ' . $pending->ID . '). Marking as failed.' );
 				update_post_meta( $pending->ID, 'psa_source', 'failed' );
 				update_post_meta( $pending->ID, 'psa_generation_error', 'Generation failed after ' . PSA_Config::MAX_GENERATION_RETRIES . ' attempts.' );
@@ -266,7 +267,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Handle a new generation request — validate, create placeholder, and schedule generation.
+	 * Handle a new generation request â€” validate, create placeholder, and schedule generation.
 	 *
 	 * @param string $query The search query (peptide name).
 	 * @return void Exits with wp_send_json_* responses.
@@ -295,7 +296,7 @@ class PSA_Search {
 			);
 		}
 
-		// It's a real peptide — increment rate limit and create placeholder.
+		// It's a real peptide â€” increment rate limit and create placeholder.
 		$ip       = psa_get_client_ip();
 		$rate_key = 'psa_rate_' . md5( $ip );
 		$count    = (int) get_transient( $rate_key );
@@ -392,7 +393,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Schedule background generation using WP-Cron (n�blocking).
+	 * Schedule background generation using WP-Cron (n¢blocking).
 	 *
 	 * @param int    $post_id      The placeholder post ID.
 	 * @param string $peptide_name The peptide to research.
@@ -406,7 +407,7 @@ class PSA_Search {
 	}
 
 	/**
-	 * Core search logic — queries CPT by title and aliases (published only).
+	 * Core search logic â€” queries CPT by title and aliases (published only).
 	 * Includes transient caching and batch post/meta priming to avoid N+1 queries.
 	 *
 	 * @param string $query Search term.
