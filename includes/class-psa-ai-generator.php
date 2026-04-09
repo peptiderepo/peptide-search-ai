@@ -50,7 +50,7 @@ class PSA_AI_Generator {
 		$prompt = apply_filters( 'psa_validation_prompt', $prompt, $name );
 		$response = self::call_openrouter(
 			$api_key,
-			$model ?: 'google/gemini-2.0-flash-001',
+			$model ? $model : 'google/gemini-2.0-flash-001',
 			$prompt,
 			PSA_Config::VALIDATION_MAX_TOKENS
 		);
@@ -89,21 +89,21 @@ class PSA_AI_Generator {
 	public static function background_generate( $post_id, $peptide_name ) {
 		$post = get_post( $post_id );
 		if ( ! $post || 'draft' !== $post->post_status || 'peptide' !== $post->post_type ) {
-			error_log( 'PSA: background_generate skipped — post ' . $post_id . ' not a draft peptide.' );
+			error_log( 'PSA: background_generate skipped â post ' . $post_id . ' not a draft peptide.' );
 			return;
 		}
 
 		// Only process posts that are still in 'pending' state.
 		$source = get_post_meta( $post_id, 'psa_source', true );
 		if ( 'pending' !== $source ) {
-			error_log( 'PSA: background_generate skipped — post ' . $post_id . ' source is "' . $source . '", not "pending".' );
+			error_log( 'PSA: background_generate skipped â post ' . $post_id . ' source is "' . $source . '", not "pending".' );
 			return;
 		}
 
 		$options      = self::get_settings();
 		$auto_publish = $options['auto_publish'];
 
-		error_log( 'PSA: Generating content for "' . $peptide_name . '" (post ' . $post_id . ') using model: ' . ( $options['ai_model'] ?: 'google/gemini-2.5-flash' ) );
+		error_log( 'PSA: Generating content for "' . $peptide_name . '" (post ' . $post_id . ') using model: ' . ( $options['ai_model'] ? $options['ai_model'] : 'google/gemini-2.5-flash' ) );
 
 		// Allow developers to hook before generation starts.
 		do_action( 'psa_before_generation', $post_id, $peptide_name );
@@ -124,7 +124,7 @@ class PSA_AI_Generator {
 
 		// Safeguard: if post_content is still empty after generation, log a warning.
 		if ( empty( trim( $post_content ) ) ) {
-			error_log( 'PSA: WARNING — AI returned valid JSON but post content (overview/description) is empty for "' . $peptide_name . '". Available keys: ' . implode( ', ', array_keys( $result ) ) );
+			error_log( 'PSA: WARNING â AI returned valid JSON but post content (overview/description) is empty for "' . $peptide_name . '". Available keys: ' . implode( ', ', array_keys( $result ) ) );
 			update_post_meta( $post_id, 'psa_generation_error', 'AI returned empty overview/description content. Available fields: ' . implode( ', ', array_keys( $result ) ) );
 			return;
 		}
@@ -161,7 +161,7 @@ class PSA_AI_Generator {
 			return;
 		}
 
-		// Save all meta fields — prefer PubChem data for molecular properties.
+		// Save all meta fields â prefer PubChem data for molecular properties.
 		self::save_peptide_meta( $post_id, $result, $pubchem_data );
 
 		// Create a matching Knowledge Base article.
@@ -198,7 +198,7 @@ class PSA_AI_Generator {
 		$prompt = apply_filters( 'psa_generation_prompt', $prompt, $peptide_name );
 		$response = self::call_openrouter(
 			$api_key,
-			$model ?: 'google/gemini-2.5-flash',
+			$model ? $model : 'google/gemini-2.5-flash',
 			$prompt,
 			PSA_Config::GENERATION_MAX_TOKENS
 		);
@@ -393,7 +393,7 @@ PROMPT;
 				return $result;
 			}
 
-			// Rate limited — retry with exponential backoff.
+			// Rate limited â retry with exponential backoff.
 			if ( $attempt < $max_retries ) {
 				$delay = $base_delay * pow( 2, $attempt - 1 ); // 5s, 10s, 20s
 				error_log( 'PSA: Rate limited on attempt ' . $attempt . '/' . $max_retries . '. Retrying in ' . $delay . 's...' );
@@ -432,8 +432,14 @@ PROMPT;
 					array(
 						'model'       => $model,
 						'messages'    => array(
-							array( 'role' => 'system', 'content' => 'You are a scientific database assistant. Return only valid JSON.' ),
-							array( 'role' => 'user', 'content' => $prompt ),
+							array(
+								'role'    => 'system',
+								'content' => 'You are a scientific database assistant. Return only valid JSON.',
+							),
+							array(
+								'role'    => 'user',
+								'content' => $prompt,
+							),
 						),
 						'max_tokens'  => $max_tokens,
 						'temperature' => 0.3,
@@ -512,7 +518,7 @@ PROMPT;
 	 */
 	private static function create_kb_article( $peptide_post_id, $ai_data, $peptide_name ) {
 		if ( ! post_type_exists( 'epkb_post_type_1' ) ) {
-			error_log( 'PSA: Echo Knowledge Base not active — skipping KB article.' );
+			error_log( 'PSA: Echo Knowledge Base not active â skipping KB article.' );
 			return;
 		}
 
@@ -533,8 +539,8 @@ PROMPT;
 
 		// Build header meta line.
 		$cat_label = ! empty( $ai_data['category_label'] ) ? $ai_data['category_label'] : '';
-		$origin    = ! empty( $ai_data['origin'] )         ? $ai_data['origin']         : '';
-		$sequence  = ! empty( $ai_data['sequence'] )       ? $ai_data['sequence']       : '';
+		$origin    = ! empty( $ai_data['origin'] ) ? $ai_data['origin'] : '';
+		$sequence  = ! empty( $ai_data['sequence'] ) ? $ai_data['sequence'] : '';
 
 		$header = '';
 		if ( $cat_label ) {
@@ -675,7 +681,7 @@ PROMPT;
 			} else {
 				// Check if first line is a subheading followed by content.
 				$first_nl = strpos( $block, "\n" );
-				if ( $first_nl !== false ) {
+				if ( false !== $first_nl ) {
 					$first_line = trim( substr( $block, 0, $first_nl ) );
 					$rest       = trim( substr( $block, $first_nl + 1 ) );
 					if ( strlen( $first_line ) < 80 && strpos( $first_line, '.' ) === false ) {
