@@ -20,6 +20,9 @@ class PSA_Config {
 	const REST_RATE_LIMIT = 20;
 	const AJAX_RATE_LIMIT = 10;
 
+	// Daily generation cap
+	const DAILY_GENERATION_CAP   = 50;
+
 	// Generation timing
 	const PENDING_TIMEOUT        = 300; // seconds (5 minutes)
 	const MAX_GENERATION_RETRIES = 3;

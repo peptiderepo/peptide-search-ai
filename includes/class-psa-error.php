@@ -3,7 +3,8 @@
  * Standardized error handling for Peptide Search AI.
  * Provides a unified interface for sending error responses with consistent structure.
  *
- * @package PeptideSearchAI
+ * @package    PeptideSearchAI
+ * @deprecated 4.1.0 Currently unused. Retained for potential future integration.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

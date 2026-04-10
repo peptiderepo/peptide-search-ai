@@ -48,7 +48,9 @@ add_action( 'admin_init', 'psa_admin_init' );
  * Uses is_page() which is reliable even in block templates.
  */
 function psa_is_kb_page() {
-	return is_page( 73 ) || is_page( 'peptide-database' );
+	$settings = get_option( 'psa_settings', array() );
+	$kb_page  = $settings['kb_page_id'] ?? 73;
+	return is_page( $kb_page ) || is_page( 'peptide-database' );
 }
 
 /**
@@ -169,8 +171,6 @@ register_deactivation_hook( __FILE__, 'psa_deactivate' );
 function psa_get_client_ip() {
 	$headers = array(
 		'HTTP_CF_CONNECTING_IP',
-		'HTTP_X_FORWARDED_FOR',
-		'HTTP_X_REAL_IP',
 		'REMOTE_ADDR',
 	);
 	foreach ( $headers as $header ) {

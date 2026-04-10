@@ -30,6 +30,15 @@ class PSA_AI_Generator {
 	 * @return array|WP_Error { is_valid: bool, canonical_name: string, reason: string }
 	 */
 	public static function validate_peptide_name( $name ) {
+		// Input character validation — block injection attempts before API call.
+		if ( ! self::validate_peptide_input( $name ) ) {
+			return array(
+				'is_valid'       => false,
+				'canonical_name' => $name,
+				'reason'         => 'Invalid characters in peptide name.',
+			);
+		}
+
 		$options = self::get_settings();
 		$api_key = $options['api_key'];
 		$model   = $options['validation_model'];
@@ -89,14 +98,14 @@ class PSA_AI_Generator {
 	public static function background_generate( $post_id, $peptide_name ) {
 		$post = get_post( $post_id );
 		if ( ! $post || 'draft' !== $post->post_status || 'peptide' !== $post->post_type ) {
-			error_log( 'PSA: background_generate skipped â post ' . $post_id . ' not a draft peptide.' );
+			error_log( 'PSA: background_generate skipped — post ' . $post_id . ' not a draft peptide.' );
 			return;
 		}
 
 		// Only process posts that are still in 'pending' state.
 		$source = get_post_meta( $post_id, 'psa_source', true );
 		if ( 'pending' !== $source ) {
-			error_log( 'PSA: background_generate skipped â post ' . $post_id . ' source is "' . $source . '", not "pending".' );
+			error_log( 'PSA: background_generate skipped — post ' . $post_id . ' source is "' . $source . '", not "pending".' );
 			return;
 		}
 
@@ -124,7 +133,7 @@ class PSA_AI_Generator {
 
 		// Safeguard: if post_content is still empty after generation, log a warning.
 		if ( empty( trim( $post_content ) ) ) {
-			error_log( 'PSA: WARNING â AI returned valid JSON but post content (overview/description) is empty for "' . $peptide_name . '". Available keys: ' . implode( ', ', array_keys( $result ) ) );
+			error_log( 'PSA: WARNING — AI returned valid JSON but post content (overview/description) is empty for "' . $peptide_name . '". Available keys: ' . implode( ', ', array_keys( $result ) ) );
 			update_post_meta( $post_id, 'psa_generation_error', 'AI returned empty overview/description content. Available fields: ' . implode( ', ', array_keys( $result ) ) );
 			return;
 		}
@@ -161,11 +170,11 @@ class PSA_AI_Generator {
 			return;
 		}
 
-		// Save all meta fields â prefer PubChem data for molecular properties.
+		// Save all meta fields — prefer PubChem data for molecular properties.
 		self::save_peptide_meta( $post_id, $result, $pubchem_data );
 
 		// Create a matching Knowledge Base article.
-		self::create_kb_article( $post_id, $result, $peptide_name );
+		self::create_kb_article( $post_id, $result, $peptide_name, $post_status );
 
 		// Clean up generation tracking.
 		delete_post_meta( $post_id, 'psa_generation_started' );
@@ -281,6 +290,28 @@ class PSA_AI_Generator {
 	}
 
 	/**
+	 * Validate peptide name input characters and block injection patterns.
+	 *
+	 * @param string $name The peptide name to validate.
+	 * @return bool True if input looks legitimate.
+	 */
+	private static function validate_peptide_input( $name ) {
+		// Allow only characters that appear in legitimate peptide names.
+		if ( ! preg_match( '/^[\p{L}\d\s\-\(\),\.\/\+\[\]]+$/u', $name ) ) {
+			return false;
+		}
+		// Block obvious prompt injection patterns.
+		$blocked = array( 'ignore', 'instruction', 'override', 'system prompt', 'forget', 'disregard', 'pretend' );
+		$lower   = strtolower( $name );
+		foreach ( $blocked as $word ) {
+			if ( strpos( $lower, $word ) !== false ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
 	 * Build the lightweight validation prompt.
 	 *
 	 * Uses wp_json_encode() to safely encode the peptide name within the prompt.
@@ -393,9 +424,14 @@ PROMPT;
 				return $result;
 			}
 
-			// Rate limited â retry with exponential backoff.
+			// Rate limited — retry with exponential backoff.
 			if ( $attempt < $max_retries ) {
 				$delay = $base_delay * pow( 2, $attempt - 1 ); // 5s, 10s, 20s
+				// Avoid blocking PHP workers during WP-Cron execution.
+				if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+					error_log( 'PSA: Rate limited during cron on attempt ' . $attempt . '/' . $max_retries . '. Returning to free PHP worker.' );
+					return new WP_Error( 'rate_limited', 'Rate limited during background generation. Will retry on next cron trigger.' );
+				}
 				error_log( 'PSA: Rate limited on attempt ' . $attempt . '/' . $max_retries . '. Retrying in ' . $delay . 's...' );
 				sleep( $delay );
 			}
@@ -515,10 +551,11 @@ PROMPT;
 	 * @param int   $peptide_post_id The peptide post ID.
 	 * @param array $ai_data         The parsed AI data.
 	 * @param string $peptide_name   The peptide name.
+	 * @param string $post_status    The post status (default: 'draft').
 	 */
-	private static function create_kb_article( $peptide_post_id, $ai_data, $peptide_name ) {
+	private static function create_kb_article( $peptide_post_id, $ai_data, $peptide_name, $post_status = 'draft' ) {
 		if ( ! post_type_exists( 'epkb_post_type_1' ) ) {
-			error_log( 'PSA: Echo Knowledge Base not active â skipping KB article.' );
+			error_log( 'PSA: Echo Knowledge Base not active — skipping KB article.' );
 			return;
 		}
 
@@ -607,7 +644,7 @@ PROMPT;
 				'post_title'   => $title,
 				'post_content' => wp_kses_post( $c ),
 				'post_type'    => 'epkb_post_type_1',
-				'post_status'  => 'publish',
+				'post_status'  => $post_status,
 			),
 			true
 		);

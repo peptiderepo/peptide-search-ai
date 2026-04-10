@@ -39,8 +39,8 @@ class PSA_Search {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$wpdb->query(
 			"DELETE FROM {$wpdb->options}
-			WHERE option_name LIKE 'transient_psa_search_%'
-			   OR option_name LIKE 'transient_timeout_psa_search_%'"
+			WHERE option_name LIKE '_transient_psa_search_%'
+			   OR option_name LIKE '_transient_timeout_psa_search_%'"
 		);
 	}
 
@@ -236,6 +236,7 @@ class PSA_Search {
 						'message' => 'We were unable to generate content for this peptide. Please try again later.',
 					)
 				);
+				return;
 			}
 
 			// Retry generation.
@@ -273,6 +274,19 @@ class PSA_Search {
 	 * @return void Exits with wp_send_json_* responses.
 	 */
 	private static function handle_new_generation( $query ) {
+		// Global daily generation cap to prevent cost overruns.
+		$daily_key   = 'psa_daily_gen_' . gmdate( 'Y-m-d' );
+		$daily_count = (int) get_transient( $daily_key );
+		if ( $daily_count >= PSA_Config::DAILY_GENERATION_CAP ) {
+			wp_send_json_success(
+				array(
+					'status'  => 'rate_limited',
+					'message' => 'Our system has reached its daily limit for adding new peptides. Please try again tomorrow.',
+				)
+			);
+			return;
+		}
+
 		// Validate peptide name via AI.
 		$validation = PSA_AI_Generator::validate_peptide_name( $query );
 
@@ -307,6 +321,11 @@ class PSA_Search {
 		if ( is_wp_error( $placeholder_id ) ) {
 			wp_send_json_error( 'Failed to create peptide entry. Please try again.' );
 		}
+
+		// Increment global daily generation counter.
+		$daily_key   = 'psa_daily_gen_' . gmdate( 'Y-m-d' );
+		$daily_count = (int) get_transient( $daily_key );
+		set_transient( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
 
 		// Schedule async background generation.
 		error_log( 'PSA: Scheduling async generation for "' . $canonical_name . '" (post ' . $placeholder_id . ')' );

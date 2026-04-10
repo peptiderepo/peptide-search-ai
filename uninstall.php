@@ -9,20 +9,20 @@
 
 // Abort if not called by WordPress.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
-    exit;
+	exit;
 }
 
 global $wpdb;
 
 // 1. Delete all peptide custom posts and their meta.
 $peptide_ids = $wpdb->get_col(
-    "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'peptide'"
+	"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'peptide'"
 );
 
 if ( ! empty( $peptide_ids ) ) {
-    foreach ( $peptide_ids as $post_id ) {
-        wp_delete_post( (int) $post_id, true ); // Force delete, bypass trash.
-    }
+	foreach ( $peptide_ids as $post_id ) {
+		wp_delete_post( (int) $post_id, true ); // Force delete, bypass trash.
+	}
 }
 
 // 2. Delete plugin options.
