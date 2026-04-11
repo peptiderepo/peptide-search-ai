@@ -4,7 +4,7 @@ Tags: peptide, database, search, AI, science, research, openrouter
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 4.0.0
+Stable tag: 4.1.0
 License: GPLv2 or later
 
 Searchable peptide database with AI-powered auto-population. Visitors search for peptides — if one doesn't exist, it's automatically validated and created with comprehensive AI-generated scientific content in the background.
