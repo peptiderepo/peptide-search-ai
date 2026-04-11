@@ -171,7 +171,7 @@
                     if (textStatus === 'timeout') {
                         errorMsg = 'Request timed out. The server took too long to respond. Please try again.';
                     } else if (textStatus === 'error') {
-                        if (jqXR.status === 0) {
+                        if (jqXHR.status === 0) {
                             errorMsg = 'Network error. Please check your connection and try again.';
                         } else if (jqXHR.status === 500) {
                             errorMsg = 'Server error. Please try again later.';
@@ -188,7 +188,7 @@
 
         $form.on('submit', function (e) {
             e.preventDefault();
-            doSearck($input.val().trim());
+            doSearch($input.val().trim());
         });
 
         var debouncedSearch = debounce(function () {
