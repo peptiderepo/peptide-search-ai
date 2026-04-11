@@ -146,10 +146,10 @@ class PSA_Cost_Tracker {
 		$end_date   = gmdate( 'Y-m-t', mktime( 0, 0, 0, $month, 1, $year ) );
 		$end_date   = $end_date . ' 23:59:59';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COALESCE(SUM(estimated_cost_usd), 0) FROM $table_name WHERE created_at >= %s AND created_at <= %s",
+				'SELECT COALESCE(SUM(estimated_cost_usd), 0) FROM ' . $table_name . ' WHERE created_at >= %s AND created_at <= %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table name is safe, built from $wpdb->prefix.
 				$start_date,
 				$end_date
 			)
@@ -185,10 +185,10 @@ class PSA_Cost_Tracker {
 		$end_date   = gmdate( 'Y-m-t', mktime( 0, 0, 0, $month, 1, $year ) );
 		$end_date   = $end_date . ' 23:59:59';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COALESCE(SUM(total_tokens), 0) FROM $table_name WHERE created_at >= %s AND created_at <= %s",
+				'SELECT COALESCE(SUM(total_tokens), 0) FROM ' . $table_name . ' WHERE created_at >= %s AND created_at <= %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table name is safe, built from $wpdb->prefix.
 				$start_date,
 				$end_date
 			)
@@ -231,7 +231,7 @@ class PSA_Cost_Tracker {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM $table_name ORDER BY created_at DESC LIMIT %d",
+				'SELECT * FROM ' . $table_name . ' ORDER BY created_at DESC LIMIT %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table name is safe, built from $wpdb->prefix.
 				$limit
 			)
 		);
@@ -280,7 +280,7 @@ class PSA_Cost_Tracker {
 
 		$table_name = $wpdb->prefix . 'psa_api_logs';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- table name is safe, built from $wpdb->prefix.
+		$wpdb->query( 'DROP TABLE IF EXISTS ' . $table_name );
 	}
 }
