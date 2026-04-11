@@ -47,6 +47,11 @@ class PSA_AI_Generator {
 			return new WP_Error( 'no_api_key', 'OpenRouter API key is not configured.' );
 		}
 
+		// Check monthly budget before validation.
+		if ( PSA_Cost_Tracker::is_budget_exceeded() ) {
+			return new WP_Error( 'budget_exceeded', 'Monthly API budget reached.' );
+		}
+
 		// Check transient cache first (avoid repeated API calls for same term).
 		$cache_key = 'psa_validate_' . md5( strtolower( trim( $name ) ) );
 		$cached    = get_transient( $cache_key );
@@ -61,7 +66,9 @@ class PSA_AI_Generator {
 			$api_key,
 			$model ? $model : 'google/gemini-2.0-flash-001',
 			$prompt,
-			PSA_Config::VALIDATION_MAX_TOKENS
+			PSA_Config::VALIDATION_MAX_TOKENS,
+			'validation',
+			$name
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -202,6 +209,11 @@ class PSA_AI_Generator {
 			return new WP_Error( 'no_api_key', 'OpenRouter API key is not configured.' );
 		}
 
+		// Check monthly budget before generation.
+		if ( PSA_Cost_Tracker::is_budget_exceeded() ) {
+			return new WP_Error( 'budget_exceeded', 'Monthly API budget reached.' );
+		}
+
 		$prompt   = self::build_generation_prompt( $peptide_name );
 		// Allow filtering of generation prompt before sending.
 		$prompt = apply_filters( 'psa_generation_prompt', $prompt, $peptide_name );
@@ -209,7 +221,9 @@ class PSA_AI_Generator {
 			$api_key,
 			$model ? $model : 'google/gemini-2.5-flash',
 			$prompt,
-			PSA_Config::GENERATION_MAX_TOKENS
+			PSA_Config::GENERATION_MAX_TOKENS,
+			'generation',
+			$peptide_name
 		);
 
 		if ( is_wp_error( $response ) ) {
@@ -217,6 +231,54 @@ class PSA_AI_Generator {
 		}
 
 		return self::parse_ai_response( $response );
+	}
+
+	/**
+	 * Perform a dry-run to estimate costs WITHOUT making API calls.
+	 *
+	 * @param string $peptide_name The peptide name to estimate.
+	 * @return array {
+	 *     'validation' => { tokens: int, estimated_cost_usd: float },
+	 *     'generation' => { tokens: int, estimated_cost_usd: float },
+	 *     'total_estimated_cost_usd' => float,
+	 * }
+	 */
+	public static function dry_run( $peptide_name ) {
+		$options = self::get_settings();
+		$validation_model = $options['validation_model'] ? $options['validation_model'] : 'google/gemini-2.0-flash-001';
+		$generation_model = $options['ai_model'] ? $options['ai_model'] : 'google/gemini-2.5-flash';
+
+		// Estimate validation: prompt tokens from validation prompt + completion tokens.
+		$validation_prompt = self::build_validation_prompt( $peptide_name );
+		$validation_prompt_tokens = (int) ceil( strlen( $validation_prompt ) / 4 ); // rough estimate: 1 token ≈ 4 chars.
+		$validation_completion_tokens = PSA_Config::VALIDATION_MAX_TOKENS;
+		$validation_cost = PSA_Cost_Tracker::estimate_cost(
+			$validation_model,
+			$validation_prompt_tokens,
+			$validation_completion_tokens
+		);
+
+		// Estimate generation: prompt tokens from generation prompt + completion tokens.
+		$generation_prompt = self::build_generation_prompt( $peptide_name );
+		$generation_prompt_tokens = (int) ceil( strlen( $generation_prompt ) / 4 );
+		$generation_completion_tokens = PSA_Config::GENERATION_MAX_TOKENS;
+		$generation_cost = PSA_Cost_Tracker::estimate_cost(
+			$generation_model,
+			$generation_prompt_tokens,
+			$generation_completion_tokens
+		);
+
+		return array(
+			'validation' => array(
+				'tokens'              => $validation_prompt_tokens + $validation_completion_tokens,
+				'estimated_cost_usd'  => $validation_cost,
+			),
+			'generation' => array(
+				'tokens'              => $generation_prompt_tokens + $generation_completion_tokens,
+				'estimated_cost_usd'  => $generation_cost,
+			),
+			'total_estimated_cost_usd' => $validation_cost + $generation_cost,
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -416,18 +478,20 @@ PROMPT;
 	 * On third rate limit: waits 20s before final attempt.
 	 * Other errors are returned immediately without retry.
 	 *
-	 * @param string $api_key    The OpenRouter API key.
-	 * @param string $model      The model identifier.
-	 * @param string $prompt     The prompt text.
-	 * @param int    $max_tokens Maximum tokens to generate.
+	 * @param string $api_key      The OpenRouter API key.
+	 * @param string $model        The model identifier.
+	 * @param string $prompt       The prompt text.
+	 * @param int    $max_tokens   Maximum tokens to generate.
+	 * @param string $request_type 'validation' or 'generation' (default).
+	 * @param string $peptide_name Peptide name for logging.
 	 * @return string|WP_Error Response text or error.
 	 */
-	private static function call_openrouter( $api_key, $model, $prompt, $max_tokens = PSA_Config::GENERATION_MAX_TOKENS ) {
+	private static function call_openrouter( $api_key, $model, $prompt, $max_tokens = PSA_Config::GENERATION_MAX_TOKENS, $request_type = 'generation', $peptide_name = '' ) {
 		$max_retries = PSA_Config::API_RETRY_MAX;
 		$base_delay  = PSA_Config::API_RETRY_BASE_DELAY; // seconds
 
 		for ( $attempt = 1; $attempt <= $max_retries; $attempt++ ) {
-			$result = self::call_openrouter_once( $api_key, $model, $prompt, $max_tokens );
+			$result = self::call_openrouter_once( $api_key, $model, $prompt, $max_tokens, $request_type, $peptide_name );
 
 			// If not a rate limit error, return immediately.
 			if ( ! is_wp_error( $result ) || 'rate_limited' !== $result->get_error_code() ) {
@@ -454,13 +518,15 @@ PROMPT;
 	/**
 	 * Single OpenRouter API call (no retry).
 	 *
-	 * @param string $api_key    The OpenRouter API key.
-	 * @param string $model      The model identifier.
-	 * @param string $prompt     The prompt text.
-	 * @param int    $max_tokens Maximum tokens to generate.
+	 * @param string $api_key      The OpenRouter API key.
+	 * @param string $model        The model identifier.
+	 * @param string $prompt       The prompt text.
+	 * @param int    $max_tokens   Maximum tokens to generate.
+	 * @param string $request_type 'validation' or 'generation' (default).
+	 * @param string $peptide_name Peptide name for logging.
 	 * @return string|WP_Error Response text or error.
 	 */
-	private static function call_openrouter_once( $api_key, $model, $prompt, $max_tokens = 4096 ) {
+	private static function call_openrouter_once( $api_key, $model, $prompt, $max_tokens = 4096, $request_type = 'generation', $peptide_name = '' ) {
 		$site_url  = get_bloginfo( 'url' );
 		$site_name = get_bloginfo( 'name' );
 
@@ -524,6 +590,22 @@ PROMPT;
 			error_log( 'PSA: OpenRouter returned empty content. Raw: ' . substr( $raw_body, 0, 500 ) );
 			return new WP_Error( 'api_error', 'OpenRouter API returned an empty response.' );
 		}
+
+		// Log API call with token usage.
+		$prompt_tokens = (int) ( $body['usage']['prompt_tokens'] ?? 0 );
+		$completion_tokens = (int) ( $body['usage']['completion_tokens'] ?? 0 );
+
+		PSA_Cost_Tracker::log_api_call(
+			array(
+				'provider'       => 'openrouter',
+				'model'          => $model,
+				'prompt_tokens'  => $prompt_tokens,
+				'completion_tokens' => $completion_tokens,
+				'request_type'   => $request_type,
+				'peptide_name'   => $peptide_name,
+				'success'        => true,
+			)
+		);
 
 		return $body['choices'][0]['message']['content'];
 	}

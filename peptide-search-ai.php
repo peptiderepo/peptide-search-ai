@@ -25,6 +25,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-error.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-encryption.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-cost-tracker.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-ai-generator.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-pubchem.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin.php';
@@ -160,6 +161,7 @@ add_action( 'wp_footer', 'psa_replace_kb_search' );
 
 function psa_activate() {
 	PSA_Post_Type::register_peptide_post_type();
+	PSA_Cost_Tracker::create_table();
 	flush_rewrite_rules();
 }
 register_activation_hook( __FILE__, 'psa_activate' );

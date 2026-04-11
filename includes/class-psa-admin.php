@@ -92,6 +92,13 @@ class PSA_Admin {
 			'peptide-search-ai',
 			'psa_behavior_section'
 		);
+		add_settings_field(
+			'monthly_budget',
+			__( 'Monthly API Budget (USD)', 'peptide-search-ai' ),
+			array( __CLASS__, 'render_budget_field' ),
+			'peptide-search-ai',
+			'psa_behavior_section'
+		);
 	}
 
 	/**
@@ -123,6 +130,7 @@ class PSA_Admin {
 			'auto_publish'     => sanitize_text_field( $input['auto_publish'] ?? 'draft' ),
 			// Checkbox: if key is absent in POST, it was unchecked → '0'.
 			'use_pubchem'      => ! empty( $input['use_pubchem'] ) ? '1' : '0',
+			'monthly_budget'   => max( 0, floatval( $input['monthly_budget'] ?? PSA_Config::DEFAULT_MONTHLY_BUDGET ) ),
 		);
 	}
 
@@ -210,6 +218,14 @@ class PSA_Admin {
 		<?php
 	}
 
+	public static function render_budget_field() {
+		$value = self::get_setting( 'monthly_budget', PSA_Config::DEFAULT_MONTHLY_BUDGET );
+		?>
+		<input type="number" name="psa_settings[monthly_budget]" value="<?php echo esc_attr( $value ); ?>" step="0.01" min="0" />
+		<p class="description"><?php esc_html_e( 'Set to 0 for unlimited. Generation will stop when this budget is reached.', 'peptide-search-ai' ); ?></p>
+		<?php
+	}
+
 	// -------------------------------------------------------------------------
 	// Settings page
 	// -------------------------------------------------------------------------
@@ -226,6 +242,10 @@ class PSA_Admin {
 				submit_button();
 				?>
 			</form>
+
+			<hr />
+			<h2><?php esc_html_e( 'API Usage & Costs', 'peptide-search-ai' ); ?></h2>
+			<?php self::render_usage_summary(); ?>
 
 			<hr />
 			<h2><?php esc_html_e( 'How It Works', 'peptide-search-ai' ); ?></h2>
@@ -247,6 +267,58 @@ class PSA_Admin {
 			<p><code>GET /wp-json/peptides/v1/search?q=BPC-157</code></p>
 			<p class="description"><?php esc_html_e( 'The REST endpoint returns published peptides only — it does not trigger auto-generation.', 'peptide-search-ai' ); ?></p>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Render the API usage summary section.
+	 */
+	private static function render_usage_summary() {
+		$current_spend = PSA_Cost_Tracker::get_monthly_spend();
+		$current_tokens = PSA_Cost_Tracker::get_monthly_tokens();
+		$budget = floatval( self::get_setting( 'monthly_budget', PSA_Config::DEFAULT_MONTHLY_BUDGET ) );
+		$budget_remaining = ( 0 === $budget ) ? __( 'Unlimited', 'peptide-search-ai' ) : '$' . number_format( max( 0, $budget - $current_spend ), 2 );
+		$recent_logs = PSA_Cost_Tracker::get_recent_logs( 20 );
+
+		?>
+		<div style="background: #f5f5f5; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+			<h3><?php esc_html_e( 'This Month', 'peptide-search-ai' ); ?></h3>
+			<p>
+				<strong><?php esc_html_e( 'Spend:', 'peptide-search-ai' ); ?></strong> $<?php echo esc_html( number_format( $current_spend, 2 ) ); ?><br />
+				<strong><?php esc_html_e( 'Tokens:', 'peptide-search-ai' ); ?></strong> <?php echo esc_html( number_format( $current_tokens ) ); ?><br />
+				<strong><?php esc_html_e( 'Budget Remaining:', 'peptide-search-ai' ); ?></strong> <?php echo esc_html( $budget_remaining ); ?>
+			</p>
+		</div>
+
+		<?php if ( ! empty( $recent_logs ) ) : ?>
+			<h3><?php esc_html_e( 'Recent API Calls (Last 20)', 'peptide-search-ai' ); ?></h3>
+			<table class="widefat striped" style="margin-bottom: 20px;">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Date', 'peptide-search-ai' ); ?></th>
+						<th><?php esc_html_e( 'Model', 'peptide-search-ai' ); ?></th>
+						<th><?php esc_html_e( 'Tokens', 'peptide-search-ai' ); ?></th>
+						<th><?php esc_html_e( 'Cost', 'peptide-search-ai' ); ?></th>
+						<th><?php esc_html_e( 'Type', 'peptide-search-ai' ); ?></th>
+						<th><?php esc_html_e( 'Peptide', 'peptide-search-ai' ); ?></th>
+						<th><?php esc_html_e( 'Status', 'peptide-search-ai' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $recent_logs as $log ) : ?>
+						<tr>
+							<td><?php echo esc_html( $log->created_at ); ?></td>
+							<td><code><?php echo esc_html( $log->model ); ?></code></td>
+							<td><?php echo esc_html( number_format( $log->total_tokens ) ); ?></td>
+							<td>$<?php echo esc_html( number_format( $log->estimated_cost_usd, 4 ) ); ?></td>
+							<td><?php echo esc_html( $log->request_type ); ?></td>
+							<td><?php echo esc_html( $log->peptide_name ); ?></td>
+							<td><?php echo ( 1 === (int) $log->success ) ? '✓' : '✗'; ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
 		<?php
 	}
 
