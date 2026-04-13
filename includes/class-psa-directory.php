@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Browsable peptide directory — REST endpoint, shortcode, and data formatting.
  *
@@ -12,6 +11,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-search.php      — existing search shortcode (separate from directory)
  * @see     assets/js/psa-directory.js          — frontend grid, filter, modal logic
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

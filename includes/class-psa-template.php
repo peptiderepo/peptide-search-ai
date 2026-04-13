@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Custom template rendering for single peptide pages.
  *
@@ -11,6 +10,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-post-type.php
  * @see     includes/class-psa-directory.php  — detail modal uses the same data via REST
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

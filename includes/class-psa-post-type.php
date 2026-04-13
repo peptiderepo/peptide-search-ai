@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Registers the Peptide custom post type, taxonomy, and meta fields.
  *
@@ -11,6 +10,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-ai-generator.php  — auto-assigns category term after generation
  * @see     includes/class-psa-directory.php     — reads taxonomy for directory filtering
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Handles AJAX search, the [peptide_search] shortcode, and the REST API endpoint.
  *
@@ -11,6 +10,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-ai-generator.php
  * @see     includes/class-psa-config.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

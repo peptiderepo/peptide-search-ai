@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * PubChem PUG REST API integration for molecular data enrichment.
  *
@@ -10,6 +9,7 @@ declare( strict_types=1 );
  * @package PeptideSearchAI
  * @see     includes/class-psa-ai-generator.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Configuration constants for Peptide Search AI.
  *
@@ -9,6 +8,7 @@ declare( strict_types=1 );
  *
  * @package PeptideSearchAI
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * OpenRouter API communication layer.
  *
@@ -12,6 +11,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-ai-generator.php
  * @see     includes/class-psa-cost-tracker.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -90,15 +90,15 @@ class PSA_OpenRouter {
 			array(
 				'timeout' => 120,
 				'headers' => array(
-					'Content-Type'    => 'application/json',
-					'Authorization'   => 'Bearer ' . $api_key,
-					'HTTP-Referer'    => $site_url,
-					'X-Title'         => $site_name,
+					'Content-Type'   => 'application/json',
+					'Authorization'  => 'Bearer ' . $api_key,
+					'HTTP-Referer'   => $site_url,
+					'X-Title'        => $site_name,
 				),
 				'body' => wp_json_encode(
 					array(
-						'model'       => $model,
-						'messages'    => array(
+						'model'           => $model,
+						'messages'        => array(
 							array(
 								'role'    => 'system',
 								'content' => 'You are a scientific database assistant. Return only valid JSON.',
@@ -108,8 +108,8 @@ class PSA_OpenRouter {
 								'content' => $prompt,
 							),
 						),
-						'max_tokens'  => $max_tokens,
-						'temperature' => 0.3,
+						'max_tokens'      => $max_tokens,
+						'temperature'     => 0.3,
 					)
 				),
 			)
@@ -152,13 +152,13 @@ class PSA_OpenRouter {
 
 		PSA_Cost_Tracker::log_api_call(
 			array(
-				'provider'       => 'openrouter',
-				'model'          => $model,
-				'prompt_tokens'  => $prompt_tokens,
-				'completion_tokens' => $completion_tokens,
-				'request_type'   => $request_type,
-				'peptide_name'   => $peptide_name,
-				'success'        => true,
+				'provider'            => 'openrouter',
+				'model'               => $model,
+				'prompt_tokens'       => $prompt_tokens,
+				'completion_tokens'   => $completion_tokens,
+				'request_type'        => $request_type,
+				'peptide_name'        => $peptide_name,
+				'success'             => true,
 			)
 		);
 

@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Tracks API usage costs and enforces monthly budget limits.
  *
@@ -10,6 +9,7 @@ declare( strict_types=1 );
  *
  * @package PeptideSearchAI
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

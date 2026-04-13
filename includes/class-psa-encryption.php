@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Handles encryption/decryption of sensitive data at rest.
  *
@@ -11,6 +10,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-admin.php
  * @see     includes/class-psa-ai-generator.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

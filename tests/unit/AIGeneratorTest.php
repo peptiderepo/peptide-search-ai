@@ -116,9 +116,9 @@ class AIGeneratorTest extends TestCase {
 	 */
 	public function test_parse_response_with_markdown_fences() {
 		$response_text = <<<JSON
-\`\`\`json
+```json
 {"is_valid": true, "canonical_name": "Semaglutide", "reason": "GLP-1 agonist"}
-\`\`\`
+```
 JSON;
 
 		$result = PSA_OpenRouter::parse_response( $response_text );

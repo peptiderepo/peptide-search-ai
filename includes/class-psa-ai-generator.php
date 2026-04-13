@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Handles AI content generation for new peptide entries.
  *
@@ -13,6 +12,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-pubchem.php
  * @see     includes/class-psa-post-type.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Admin settings page for Peptide Search AI.
  *
@@ -12,6 +11,7 @@ declare( strict_types=1 );
  * @see     includes/class-psa-cost-tracker.php
  * @see     includes/class-psa-post-type.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -74,21 +74,21 @@ class PSA_Admin {
 		$api_key_value = '';
 
 		if ( ! empty( $api_key_input ) && '••••••••' !== $api_key_input ) {
-			$sanitized = sanitize_text_field( $api_key_input );
-			$encrypted = PSA_Encryption::encrypt( $sanitized );
+			$sanitized     = sanitize_text_field( $api_key_input );
+			$encrypted     = PSA_Encryption::encrypt( $sanitized );
 			$api_key_value = ( false !== $encrypted ) ? $encrypted : '';
 		} else {
-			$existing = self::get_setting( 'api_key', '' );
+			$existing      = self::get_setting( 'api_key', '' );
 			$api_key_value = $existing;
 		}
 
 		return array(
-			'api_key'          => $api_key_value,
-			'ai_model'         => sanitize_text_field( $input['ai_model'] ?? '' ),
-			'validation_model' => sanitize_text_field( $input['validation_model'] ?? '' ),
-			'auto_publish'     => sanitize_text_field( $input['auto_publish'] ?? 'draft' ),
-			'use_pubchem'      => ! empty( $input['use_pubchem'] ) ? '1' : '0',
-			'monthly_budget'   => max( 0, floatval( $input['monthly_budget'] ?? PSA_Config::DEFAULT_MONTHLY_BUDGET ) ),
+			'api_key'            => $api_key_value,
+			'ai_model'           => sanitize_text_field( $input['ai_model'] ?? '' ),
+			'validation_model'   => sanitize_text_field( $input['validation_model'] ?? '' ),
+			'auto_publish'       => sanitize_text_field( $input['auto_publish'] ?? 'draft' ),
+			'use_pubchem'        => ! empty( $input['use_pubchem'] ) ? '1' : '0',
+			'monthly_budget'     => max( 0, floatval( $input['monthly_budget'] ?? PSA_Config::DEFAULT_MONTHLY_BUDGET ) ),
 		);
 	}
 
@@ -106,20 +106,28 @@ class PSA_Admin {
 
 		if ( 'migrate_categories' === $action && wp_verify_nonce( $nonce, 'psa_migrate_categories' ) ) {
 			self::run_category_migration();
-			add_action( 'admin_notices', function () {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category migration completed.', 'peptide-search-ai' ) . '</p></div>';
-			} );
+			add_action(
+				'admin_notices',
+				function () {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category migration completed.', 'peptide-search-ai' ) . '</p></div>';
+				}
+			);
 		}
 
 		if ( 'reenrich' === $action && wp_verify_nonce( $nonce, 'psa_reenrich' ) ) {
 			$queued = self::queue_reenrichment();
-			add_action( 'admin_notices', function () use ( $queued ) {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( sprintf(
-					/* translators: %d = number of peptides queued */
-					__( '%d peptides queued for re-enrichment.', 'peptide-search-ai' ),
-					$queued
-				) ) . '</p></div>';
-			} );
+			add_action(
+				'admin_notices',
+				function () use ( $queued ) {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(
+						sprintf(
+							/* translators: %d = number of peptides queued */
+							__( '%d peptides queued for re-enrichment.', 'peptide-search-ai' ),
+							$queued
+						)
+					) . '</p></div>';
+				}
+			);
 		}
 	}
 

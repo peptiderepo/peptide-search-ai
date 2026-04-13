@@ -1,5 +1,4 @@
 <?php
-declare( strict_types=1 );
 /**
  * Echo Knowledge Base article builder for generated peptide content.
  *
@@ -11,6 +10,7 @@ declare( strict_types=1 );
  * @package PeptideSearchAI
  * @see     includes/class-psa-ai-generator.php
  */
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
