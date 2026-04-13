@@ -208,8 +208,8 @@ class PSA_Cost_Tracker {
 		$settings = get_option( 'psa_settings', array() );
 		$budget   = floatval( $settings['monthly_budget'] ?? PSA_Config::DEFAULT_MONTHLY_BUDGET );
 
-		// Budget of 0 = unlimited.
-		if ( 0 === $budget ) {
+		// Budget of 0 = unlimited. Use loose comparison because floatval() returns float.
+		if ( 0.0 === $budget ) {
 			return false;
 		}
 

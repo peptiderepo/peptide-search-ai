@@ -483,7 +483,7 @@ class PSA_Admin {
 		$current_spend  = PSA_Cost_Tracker::get_monthly_spend();
 		$current_tokens = PSA_Cost_Tracker::get_monthly_tokens();
 		$budget         = floatval( self::get_setting( 'monthly_budget', PSA_Config::DEFAULT_MONTHLY_BUDGET ) );
-		$budget_remaining = ( 0 === $budget ) ? __( 'Unlimited', 'peptide-search-ai' ) : '$' . number_format( max( 0, $budget - $current_spend ), 2 );
+		$budget_remaining = ( 0.0 === $budget ) ? __( 'Unlimited', 'peptide-search-ai' ) : '$' . number_format( max( 0, $budget - $current_spend ), 2 );
 		$recent_logs    = PSA_Cost_Tracker::get_recent_logs( 20 );
 
 		?>
