@@ -27,12 +27,14 @@ peptide-search-ai/
 │   ├── class-psa-cost-tracker.php     API usage logging, monthly budget enforcement, cost estimation
 │   ├── class-psa-pubchem.php          PubChem PUG REST API integration for molecular enrichment
 │   ├── class-psa-admin.php            Settings page, usage dashboard, migration tools, re-enrichment actions
+│   ├── class-psa-batch-enrichment.php AJAX-based batch re-enrichment (processes one peptide per request, no WP-Cron)
 │   └── class-psa-template.php         Single peptide page rendering; quick-facts, extended data, badges
 │
 ├── assets/
 │   ├── js/
 │   │   ├── peptide-search.js          Frontend search, AJAX handler, result rendering (jQuery)
-│   │   └── psa-directory.js           Directory grid, category filters, detail modal (vanilla JS)
+│   │   ├── psa-directory.js           Directory grid, category filters, detail modal (vanilla JS)
+│   │   └── psa-batch-enrich.js       Admin batch enrichment UI (progress bar, AJAX polling loop)
 │   └── css/
 │       ├── peptide-search.css         Scoped styles for search UI, results, pending states, badges
 │       └── psa-directory.css          Directory card grid, filter pills, modal styles, dark mode support

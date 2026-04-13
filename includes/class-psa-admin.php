@@ -23,6 +23,7 @@ class PSA_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu_pages' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'admin_init', array( __CLASS__, 'handle_admin_actions' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_batch_scripts' ) );
 	}
 
 	/**
@@ -298,6 +299,34 @@ class PSA_Admin {
 		return $queued;
 	}
 
+	/**
+	 * Enqueue batch enrichment script on the PSA settings page only.
+	 *
+	 * @param string $hook The admin page hook suffix.
+	 */
+	public static function enqueue_batch_scripts( string $hook ): void {
+		if ( 'settings_page_peptide-search-ai' !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'psa-batch-enrich',
+			PSA_PLUGIN_URL . 'assets/js/psa-batch-enrich.js',
+			array( 'jquery' ),
+			PSA_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'psa-batch-enrich',
+			'psaBatchEnrich',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'psa_batch_enrich' ),
+			)
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// Field renderers
 	// -------------------------------------------------------------------------
@@ -386,7 +415,6 @@ class PSA_Admin {
 
 	public static function render_settings_page(): void {
 		$migrate_url  = wp_nonce_url( admin_url( 'options-general.php?page=peptide-search-ai&psa_action=migrate_categories' ), 'psa_migrate_categories' );
-		$reenrich_url = wp_nonce_url( admin_url( 'options-general.php?page=peptide-search-ai&psa_action=reenrich' ), 'psa_reenrich' );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Peptide Search AI Settings', 'peptide-search-ai' ); ?></h1>
@@ -418,10 +446,19 @@ class PSA_Admin {
 				<tr>
 					<th><?php esc_html_e( 'Re-enrich Data', 'peptide-search-ai' ); ?></th>
 					<td>
-						<a href="<?php echo esc_url( $reenrich_url ); ?>" class="button" onclick="return confirm('<?php esc_attr_e( 'This will queue background AI regeneration for peptides missing extended data. It will consume API credits. Continue?', 'peptide-search-ai' ); ?>');">
-							<?php esc_html_e( 'Re-enrich Existing Peptides', 'peptide-search-ai' ); ?>
-						</a>
-						<p class="description"><?php esc_html_e( 'Queues background regeneration for published peptides missing half-life, stability, and other extended fields. Respects daily generation cap.', 'peptide-search-ai' ); ?></p>
+						<button type="button" id="psa-batch-enrich-start" class="button button-primary">
+							<?php esc_html_e( 'Re-enrich Peptides', 'peptide-search-ai' ); ?>
+						</button>
+						<span id="psa-batch-enrich-status" style="margin-left:10px;color:#666;"></span>
+						<p class="description"><?php esc_html_e( 'Processes one peptide at a time via AI — no WP-Cron dependency. Respects daily generation cap.', 'peptide-search-ai' ); ?></p>
+
+						<div id="psa-batch-enrich-progress" style="display:none;margin-top:10px;max-width:500px;">
+							<div style="background:#e0e0e0;border-radius:3px;height:20px;overflow:hidden;">
+								<div id="psa-batch-enrich-bar" style="background:#0073aa;height:100%;width:0%;transition:width 0.3s;"></div>
+							</div>
+							<span id="psa-batch-enrich-pct" style="font-size:12px;color:#666;"></span>
+						</div>
+						<div id="psa-batch-enrich-log" style="display:none;margin-top:10px;max-height:200px;overflow-y:auto;padding:8px;background:#f9f9f9;border:1px solid #ddd;border-radius:3px;max-width:500px;font-family:monospace;font-size:12px;"></div>
 					</td>
 				</tr>
 			</table>

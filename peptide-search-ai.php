@@ -3,7 +3,7 @@
  * Plugin Name: Peptide Search AI
  * Plugin URI:  https://example.com/peptide-search-ai
  * Description: Searchable peptide database with AI-powered auto-population and browsable directory.
- * Version:     4.3.0
+ * Version:     4.4.0
  * Author:      Terence
  * License:     GPL v2 or later
  * Text Domain: peptide-search-ai
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PSA_VERSION', '4.3.0' );
+define( 'PSA_VERSION', '4.4.0' );
 define( 'PSA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PSA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PSA_PLUGIN_FILE', __FILE__ );
@@ -30,6 +30,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-kb-builder.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-ai-generator.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-pubchem.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-batch-enrichment.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-template.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-directory.php';
 
@@ -39,6 +40,7 @@ function psa_init() {
 	PSA_Search::init();
 	PSA_AI_Generator::init();
 	PSA_Admin::init();
+	PSA_Batch_Enrichment::init();
 	PSA_Template::init();
 	PSA_Directory::init();
 }
