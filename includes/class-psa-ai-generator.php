@@ -536,5 +536,4 @@ Important:
 - For the "category" field, use EXACTLY one of the eight listed categories.
 PROMPT;
 	}
-
 }

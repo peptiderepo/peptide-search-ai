@@ -270,7 +270,12 @@ class PSA_Admin {
 
 			// Mark as pending so the generator picks it up, then schedule.
 			update_post_meta( $post_id, 'psa_source', 'pending' );
-			wp_update_post( array( 'ID' => $post_id, 'post_status' => 'draft' ) );
+			wp_update_post(
+				array(
+					'ID'          => $post_id,
+					'post_status' => 'draft',
+				)
+			);
 			update_post_meta( $post_id, 'psa_generation_started', time() );
 
 			$args = array( $post_id, $post->post_title );
