@@ -1,4 +1,5 @@
 <?php
+declare( strict_types=1 );
 /**
  * Tracks API usage costs and enforces monthly budget limits.
  *
@@ -20,7 +21,7 @@ class PSA_Cost_Tracker {
 	 * Create the API logs table if it doesn't exist.
 	 * Uses dbDelta for safe schema updates.
 	 */
-	public static function create_table() {
+	public static function create_table(): void {
 		global $wpdb;
 
 		$table_name      = $wpdb->prefix . 'psa_api_logs';
@@ -68,7 +69,7 @@ class PSA_Cost_Tracker {
 	 * }
 	 * @return int|false Insert ID or false on error.
 	 */
-	public static function log_api_call( $data ) {
+	public static function log_api_call( array $data ) {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'psa_api_logs';
@@ -126,7 +127,7 @@ class PSA_Cost_Tracker {
 	 * @param int|null $month Month (defaults to current month).
 	 * @return float Total USD spent in the month.
 	 */
-	public static function get_monthly_spend( $year = null, $month = null ) {
+	public static function get_monthly_spend( ?int $year = null, ?int $month = null ): float {
 		global $wpdb;
 
 		if ( null === $year ) {
@@ -165,7 +166,7 @@ class PSA_Cost_Tracker {
 	 * @param int|null $month Month (defaults to current month).
 	 * @return int Total tokens used in the month.
 	 */
-	public static function get_monthly_tokens( $year = null, $month = null ) {
+	public static function get_monthly_tokens( ?int $year = null, ?int $month = null ): int {
 		global $wpdb;
 
 		if ( null === $year ) {
@@ -203,7 +204,7 @@ class PSA_Cost_Tracker {
 	 *
 	 * @return bool True if budget exceeded, false otherwise.
 	 */
-	public static function is_budget_exceeded() {
+	public static function is_budget_exceeded(): bool {
 		$settings = get_option( 'psa_settings', array() );
 		$budget   = floatval( $settings['monthly_budget'] ?? PSA_Config::DEFAULT_MONTHLY_BUDGET );
 
@@ -222,7 +223,7 @@ class PSA_Cost_Tracker {
 	 * @param int $limit Maximum number of logs to return.
 	 * @return array Array of log objects.
 	 */
-	public static function get_recent_logs( $limit = 20 ) {
+	public static function get_recent_logs( int $limit = 20 ): array {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'psa_api_logs';
@@ -248,7 +249,7 @@ class PSA_Cost_Tracker {
 	 * @param int    $completion_tokens Tokens in completion.
 	 * @return float Estimated cost in USD.
 	 */
-	public static function estimate_cost( $model, $prompt_tokens, $completion_tokens ) {
+	public static function estimate_cost( string $model, int $prompt_tokens, int $completion_tokens ): float {
 		// Known model pricing per 1 million tokens (input, output).
 		$pricing = array(
 			'google/gemini-2.5-flash'      => array( 0.15, 0.60 ),
@@ -275,7 +276,7 @@ class PSA_Cost_Tracker {
 	/**
 	 * Drop the API logs table during uninstall.
 	 */
-	public static function drop_table() {
+	public static function drop_table(): void {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'psa_api_logs';

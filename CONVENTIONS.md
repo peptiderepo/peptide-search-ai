@@ -312,11 +312,14 @@ psa_get_admin_user_id()             /* Get first admin user ID */
 
 ```php
 PSA_Config                          /* Configuration constants */
-PSA_Error                           /* Error handling [deprecated] */
 PSA_Post_Type                       /* CPT registration & meta */
 PSA_Search                          /* Search, AJAX, REST API, shortcode */
-PSA_AI_Generator                    /* OpenRouter integration */
+PSA_AI_Generator                    /* AI pipeline orchestrator */
+PSA_OpenRouter                      /* OpenRouter API communication layer */
+PSA_KB_Builder                      /* Echo Knowledge Base article builder */
 PSA_PubChem                         /* PubChem API integration */
+PSA_Cost_Tracker                    /* API usage tracking & budget enforcement */
+PSA_Encryption                      /* AES-256-CBC API key encryption */
 PSA_Admin                           /* Settings pages & fields */
 PSA_Template                        /* Single page rendering */
 ```

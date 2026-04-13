@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Peptide Search AI
  * Plugin URI:  https://example.com/peptide-search-ai
- * Description: Searchable peptide database with AI-powered auto-population.
- * Version:     4.1.0
+ * Description: Searchable peptide database with AI-powered auto-population and browsable directory.
+ * Version:     4.3.0
  * Author:      Terence
  * License:     GPL v2 or later
  * Text Domain: peptide-search-ai
@@ -15,28 +15,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PSA_VERSION', '4.1.0' );
+define( 'PSA_VERSION', '4.3.0' );
 define( 'PSA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PSA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PSA_PLUGIN_FILE', __FILE__ );
 
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-config.php';
-require_once PSA_PLUGIN_DIR . 'includes/class-psa-error.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-encryption.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-cost-tracker.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-openrouter.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-kb-builder.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-ai-generator.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-pubchem.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-template.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-directory.php';
 
 function psa_init() {
 	PSA_Post_Type::register_peptide_post_type();
+	PSA_Post_Type::register_taxonomy();
 	PSA_Search::init();
 	PSA_AI_Generator::init();
 	PSA_Admin::init();
 	PSA_Template::init();
+	PSA_Directory::init();
 }
 add_action( 'init', 'psa_init' );
 
@@ -61,6 +65,7 @@ function psa_is_kb_page() {
  * - KB page (page ID 73)
  * - Any page/post containing the [peptide_search] shortcode
  * - Single peptide pages
+ * - Any page/post containing the [peptide_directory] shortcode
  */
 function psa_maybe_enqueue_assets() {
 	// Homepage: always enqueue (hero section + search overlay use the shortcode).
@@ -80,16 +85,26 @@ function psa_maybe_enqueue_assets() {
 		return;
 	}
 
-	if ( ! has_shortcode( $post->post_content, 'peptide_search' ) && ! is_singular( 'peptide' ) ) {
+	$has_search    = has_shortcode( $post->post_content, 'peptide_search' );
+	$has_directory = has_shortcode( $post->post_content, 'peptide_directory' );
+	$is_peptide    = is_singular( 'peptide' );
+
+	if ( ! $has_search && ! $has_directory && ! $is_peptide ) {
 		return;
 	}
 
-	psa_enqueue_frontend_assets();
+	if ( $has_search || $is_peptide ) {
+		psa_enqueue_frontend_assets();
+	}
+
+	if ( $has_directory ) {
+		psa_enqueue_directory_assets();
+	}
 }
 add_action( 'wp_enqueue_scripts', 'psa_maybe_enqueue_assets' );
 
 /**
- * Shared helper to enqueue CSS, JS, and localize script.
+ * Shared helper to enqueue search CSS, JS, and localize script.
  */
 function psa_enqueue_frontend_assets() {
 	wp_enqueue_style(
@@ -113,8 +128,56 @@ function psa_enqueue_frontend_assets() {
 		array(
 			'ajaxurl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'psa_search_nonce' ),
+			'i18n'    => array(
+				'error'            => __( 'Error:', 'peptide-search-ai' ),
+				'searchFailed'     => __( 'Search failed.', 'peptide-search-ai' ),
+				'unexpected'       => __( 'Unexpected response.', 'peptide-search-ai' ),
+				'rateLimited'      => __( 'Too many requests. Please try again later.', 'peptide-search-ai' ),
+				'networkError'     => __( 'Could not connect to the server. Please try again.', 'peptide-search-ai' ),
+				'timeout'          => __( 'Request timed out. The server took too long to respond. Please try again.', 'peptide-search-ai' ),
+				'connectionError'  => __( 'Network error. Please check your connection and try again.', 'peptide-search-ai' ),
+				'serverError'      => __( 'Server error. Please try again later.', 'peptide-search-ai' ),
+				'unavailable'      => __( 'Server is temporarily unavailable. Please try again later.', 'peptide-search-ai' ),
+				'peptidesFound'    => __( 'peptide(s) found', 'peptide-search-ai' ),
+				'pendingMsg'       => __( 'is currently being added to our database. Please check back again later.', 'peptide-search-ai' ),
+				'invalidMsg'       => __( 'does not appear to be a recognized peptide. Please check the spelling or try a different search term.', 'peptide-search-ai' ),
+				'verified'         => __( 'Verified', 'peptide-search-ai' ),
+				'curated'          => __( 'Curated', 'peptide-search-ai' ),
+			),
 		)
 	);
+}
+
+/**
+ * Enqueue directory-specific CSS and JS for the [peptide_directory] shortcode.
+ * Includes the search CSS as a base dependency (spinner styles, badge styles).
+ */
+function psa_enqueue_directory_assets() {
+	// Directory depends on search CSS for shared styles (spinner, badges).
+	wp_enqueue_style(
+		'psa-styles',
+		PSA_PLUGIN_URL . 'assets/css/peptide-search.css',
+		array(),
+		PSA_VERSION
+	);
+
+	wp_enqueue_style(
+		'psa-directory-styles',
+		PSA_PLUGIN_URL . 'assets/css/psa-directory.css',
+		array( 'psa-styles' ),
+		PSA_VERSION
+	);
+
+	wp_enqueue_script(
+		'psa-directory',
+		PSA_PLUGIN_URL . 'assets/js/psa-directory.js',
+		array(),
+		PSA_VERSION,
+		true
+	);
+
+	// psaDirectory localization is handled in PSA_Directory::render_shortcode()
+	// because it needs to run after get_terms() to populate category data.
 }
 
 /**
@@ -161,6 +224,8 @@ add_action( 'wp_footer', 'psa_replace_kb_search' );
 
 function psa_activate() {
 	PSA_Post_Type::register_peptide_post_type();
+	PSA_Post_Type::register_taxonomy();
+	PSA_Post_Type::populate_default_categories();
 	PSA_Cost_Tracker::create_table();
 	flush_rewrite_rules();
 }

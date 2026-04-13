@@ -46,7 +46,7 @@
 
         function showError(msg) {
             hideAll();
-            $error.html('<strong>Error:</strong> ' + esc(msg)).show();
+            $error.html('<strong>' + esc(psaAjax.i18n.error) + '</strong> ' + esc(msg)).show();
             $error.attr('role', 'alert');
         }
 
@@ -58,12 +58,12 @@
 
         function sourceBadge(source) {
             var map = {
-                'pubchem': { label: 'Verified', cls: 'psa-badge-verified' },
-                'manual':  { label: 'Curated',  cls: 'psa-badge-manual' }
+                'pubchem': { label: psaAjax.i18n.verified, cls: 'psa-badge-verified' },
+                'manual':  { label: psaAjax.i18n.curated,  cls: 'psa-badge-manual' }
             };
             var b = map[source];
             if (!b) return '';
-            return '<span class="psa-result-badge ' + b.cls + '">' + b.label + '</span>';
+            return '<span class="psa-result-badge ' + b.cls + '">' + esc(b.label) + '</span>';
         }
 
         /**
@@ -72,8 +72,7 @@
         function renderResults(data) {
             hideAll();
 
-            var html = '<p class="psa-result-count">' + data.total + ' peptide' +
-                       (data.total !== 1 ? 's' : '') + ' found</p>';
+            var html = '<p class="psa-result-count">' + data.total + ' ' + esc(psaAjax.i18n.peptidesFound) + '</p>';
 
             data.results.forEach(function (item) {
                 html += '<a href="' + esc(item.url) + '" class="psa-result-item">';
@@ -100,7 +99,7 @@
         function showPending(name) {
             hideAll();
             $pending.find('.psa-pending-inner p').html(
-                '<strong>' + esc(name) + '</strong> is currently being added to our database. Please check back again later.'
+                '<strong>' + esc(name) + '</strong> ' + esc(psaAjax.i18n.pendingMsg)
             );
             $pending.show();
         }
@@ -111,7 +110,7 @@
         function showInvalid(name, reason) {
             hideAll();
             $invalid.find('.psa-invalid-text').html(
-                '<strong>' + esc(name) + '</strong> does not appear to be a recognized peptide. Please check the spelling or try a different search term.'
+                '<strong>' + esc(name) + '</strong> ' + esc(psaAjax.i18n.invalidMsg)
             );
             $invalid.show();
         }
@@ -144,7 +143,7 @@
                 success: function (response) {
                     $results.attr('aria-busy', 'false');
                     if (!response.success) {
-                        showError(response.data || 'Search failed.');
+                        showError(response.data || psaAjax.i18n.searchFailed);
                         return;
                     }
                     var d = response.data;
@@ -159,24 +158,24 @@
                             showInvalid(query, d.message);
                             break;
                         case 'rate_limited':
-                            showError(d.message || 'Too many requests. Please try again later.');
+                            showError(d.message || psaAjax.i18n.rateLimited);
                             break;
                         default:
-                            showError('Unexpected response.');
+                            showError(psaAjax.i18n.unexpected);
                     }
                 },
-                error: function (jqXHR, textStatus, errorThrown) {
+                error: function (jqXHR, textStatus) {
                     $results.attr('aria-busy', 'false');
-                    var errorMsg = 'Could not connect to the server. Please try again.';
+                    var errorMsg = psaAjax.i18n.networkError;
                     if (textStatus === 'timeout') {
-                        errorMsg = 'Request timed out. The server took too long to respond. Please try again.';
+                        errorMsg = psaAjax.i18n.timeout;
                     } else if (textStatus === 'error') {
                         if (jqXHR.status === 0) {
-                            errorMsg = 'Network error. Please check your connection and try again.';
+                            errorMsg = psaAjax.i18n.connectionError;
                         } else if (jqXHR.status === 500) {
-                            errorMsg = 'Server error. Please try again later.';
+                            errorMsg = psaAjax.i18n.serverError;
                         } else if (jqXHR.status === 503) {
-                            errorMsg = 'Server is temporarily unavailable. Please try again later.';
+                            errorMsg = psaAjax.i18n.unavailable;
                         }
                     }
                     showError(errorMsg);

@@ -97,16 +97,13 @@ class AIGeneratorTest extends TestCase {
 	}
 
 	/**
-	 * Test parse_ai_response with valid JSON string.
+	 * Test parse_response with valid JSON string.
+	 * Note: parse_ai_response was extracted to PSA_OpenRouter::parse_response() in v4.2.0.
 	 */
-	public function test_parse_ai_response_valid_json() {
+	public function test_parse_response_valid_json() {
 		$response_text = '{"is_valid": true, "canonical_name": "BPC-157", "reason": "A known peptide"}';
 
-		$reflection = new ReflectionClass( 'PSA_AI_Generator' );
-		$method     = $reflection->getMethod( 'parse_ai_response' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( null, $response_text );
+		$result = PSA_OpenRouter::parse_response( $response_text );
 
 		$this->assertIsArray( $result );
 		$this->assertArrayHasKey( 'is_valid', $result );
@@ -115,20 +112,16 @@ class AIGeneratorTest extends TestCase {
 	}
 
 	/**
-	 * Test parse_ai_response with JSON wrapped in markdown fences.
+	 * Test parse_response with JSON wrapped in markdown fences.
 	 */
-	public function test_parse_ai_response_with_markdown_fences() {
+	public function test_parse_response_with_markdown_fences() {
 		$response_text = <<<JSON
 \`\`\`json
 {"is_valid": true, "canonical_name": "Semaglutide", "reason": "GLP-1 agonist"}
 \`\`\`
 JSON;
 
-		$reflection = new ReflectionClass( 'PSA_AI_Generator' );
-		$method     = $reflection->getMethod( 'parse_ai_response' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( null, $response_text );
+		$result = PSA_OpenRouter::parse_response( $response_text );
 
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['is_valid'] );
@@ -136,9 +129,9 @@ JSON;
 	}
 
 	/**
-	 * Test parse_ai_response with <think> tags (DeepSeek model).
+	 * Test parse_response with <think> tags (DeepSeek model).
 	 */
-	public function test_parse_ai_response_with_think_tags() {
+	public function test_parse_response_with_think_tags() {
 		$response_text = <<<JSON
 <think>
 This is a known peptide from various sources.
@@ -146,11 +139,7 @@ This is a known peptide from various sources.
 {"is_valid": true, "canonical_name": "LL-37", "reason": "Antimicrobial peptide"}
 JSON;
 
-		$reflection = new ReflectionClass( 'PSA_AI_Generator' );
-		$method     = $reflection->getMethod( 'parse_ai_response' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( null, $response_text );
+		$result = PSA_OpenRouter::parse_response( $response_text );
 
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['is_valid'] );
@@ -158,32 +147,24 @@ JSON;
 	}
 
 	/**
-	 * Test parse_ai_response with invalid JSON returns WP_Error.
+	 * Test parse_response with invalid JSON returns WP_Error.
 	 */
-	public function test_parse_ai_response_invalid_json() {
+	public function test_parse_response_invalid_json() {
 		$response_text = '{not valid json}';
 
-		$reflection = new ReflectionClass( 'PSA_AI_Generator' );
-		$method     = $reflection->getMethod( 'parse_ai_response' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( null, $response_text );
+		$result = PSA_OpenRouter::parse_response( $response_text );
 
 		$this->assertTrue( is_wp_error( $result ) );
 		$this->assertEquals( 'parse_error', $result->get_error_code() );
 	}
 
 	/**
-	 * Test parse_ai_response with empty string returns WP_Error.
+	 * Test parse_response with empty string returns WP_Error.
 	 */
-	public function test_parse_ai_response_empty_string() {
+	public function test_parse_response_empty_string() {
 		$response_text = '';
 
-		$reflection = new ReflectionClass( 'PSA_AI_Generator' );
-		$method     = $reflection->getMethod( 'parse_ai_response' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( null, $response_text );
+		$result = PSA_OpenRouter::parse_response( $response_text );
 
 		$this->assertTrue( is_wp_error( $result ) );
 		$this->assertEquals( 'parse_error', $result->get_error_code() );

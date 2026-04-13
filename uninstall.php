@@ -25,18 +25,35 @@ if ( ! empty( $peptide_ids ) ) {
 	}
 }
 
-// 2. Delete plugin options.
-delete_option( 'psa_settings' );
+// 2. Delete peptide_category taxonomy terms and relationships.
+$terms = get_terms(
+	array(
+		'taxonomy'   => 'peptide_category',
+		'hide_empty' => false,
+		'fields'     => 'ids',
+	)
+);
+if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+	foreach ( $terms as $term_id ) {
+		wp_delete_term( (int) $term_id, 'peptide_category' );
+	}
+}
 
-// 3. Delete all plugin transients (validation cache, rate limits).
+// 3. Delete plugin options.
+delete_option( 'psa_settings' );
+delete_option( 'psa_search_cache_gen' );
+
+// 4. Delete all plugin transients (validation cache, rate limits).
 $wpdb->query(
-	"DELETE FROM {$wpdb->options}
-	 WHERE option_name LIKE '_transient_psa_%'
-	    OR option_name LIKE '_transient_timeout_psa_%'"
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+		$wpdb->esc_like( '_transient_psa_' ) . '%',
+		$wpdb->esc_like( '_transient_timeout_psa_' ) . '%'
+	)
 );
 
-// 4. Drop API logs table.
+// 5. Drop API logs table.
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}psa_api_logs" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 
-// 5. Flush rewrite rules to clean up the peptide post type permalinks.
+// 6. Flush rewrite rules to clean up the peptide post type permalinks.
 flush_rewrite_rules();

@@ -1,8 +1,14 @@
 <?php
+declare( strict_types=1 );
 /**
  * PubChem PUG REST API integration for molecular data enrichment.
  *
+ * What: Fetches verified molecular data (formula, weight, SMILES, InChI) from PubChem.
+ * Who calls it: PSA_AI_Generator::background_generate() during peptide content generation.
+ * Dependencies: WordPress HTTP API (wp_remote_get), PSA_Config for cache TTL.
+ *
  * @package PeptideSearchAI
+ * @see     includes/class-psa-ai-generator.php
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,7 +26,7 @@ class PSA_PubChem {
 	 * @param string $name Peptide or compound name.
 	 * @return array|WP_Error|null Array of properties, WP_Error on failure, or null if not found.
 	 */
-	public static function lookup( $name ) {
+	public static function lookup( string $name ) {
 		$options     = get_option( 'psa_settings', array() );
 		$use_pubchem = $options['use_pubchem'] ?? '1';
 
@@ -79,7 +85,7 @@ class PSA_PubChem {
 	 * @param string $name Compound name.
 	 * @return int|WP_Error|null CID, WP_Error on API failure, or null if not found.
 	 */
-	private static function get_cid_by_name( $name ) {
+	private static function get_cid_by_name( string $name ) {
 		$url = self::API_BASE . '/compound/name/' . rawurlencode( $name ) . '/cids/JSON';
 
 		$response = wp_remote_get(
@@ -112,7 +118,7 @@ class PSA_PubChem {
 	 * @param int $cid PubChem Compound ID.
 	 * @return array|WP_Error|null Properties array, WP_Error on failure, or null if not found.
 	 */
-	private static function get_properties( $cid ) {
+	private static function get_properties( int $cid ) {
 		$props = 'MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES,InChI';
 		$url   = self::API_BASE . '/compound/cid/' . (int) $cid . '/property/' . $props . '/JSON';
 

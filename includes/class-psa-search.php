@@ -1,9 +1,15 @@
 <?php
+declare( strict_types=1 );
 /**
  * Handles AJAX search, the [peptide_search] shortcode, and the REST API endpoint.
- * When a peptide is not found, it automatically validates and queues generation.
+ *
+ * What: Core search logic — AJAX handler, REST endpoint, shortcode rendering, cache management.
+ * Who calls it: WordPress AJAX/REST hooks, shortcode parser, save_post_peptide action.
+ * Dependencies: PSA_Config, PSA_AI_Generator, WordPress AJAX/REST/shortcode APIs.
  *
  * @package PeptideSearchAI
+ * @see     includes/class-psa-ai-generator.php
+ * @see     includes/class-psa-config.php
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,7 +25,7 @@ class PSA_Search {
 	 */
 	private static $instance_count = 0;
 
-	public static function init() {
+	public static function init(): void {
 		add_shortcode( 'peptide_search', array( __CLASS__, 'render_search_form' ) );
 		add_action( 'wp_ajax_psa_search', array( __CLASS__, 'ajax_search' ) );
 		add_action( 'wp_ajax_nopriv_psa_search', array( __CLASS__, 'ajax_search' ) );
@@ -38,7 +44,7 @@ class PSA_Search {
 	 *
 	 * @return int The current generation counter (default 0).
 	 */
-	private static function get_cache_generation() {
+	private static function get_cache_generation(): int {
 		$gen = (int) get_option( 'psa_search_cache_gen', 0 );
 		return $gen;
 	}
@@ -57,7 +63,7 @@ class PSA_Search {
 	 *
 	 * @param int $post_id The post ID being saved.
 	 */
-	public static function invalidate_search_cache( $post_id ) {
+	public static function invalidate_search_cache( int $post_id ): void {
 		$current_gen = self::get_cache_generation();
 		update_option( 'psa_search_cache_gen', $current_gen + 1 );
 	}
@@ -73,7 +79,7 @@ class PSA_Search {
 	 *
 	 * @return void
 	 */
-	public static function flush_all_search_caches() {
+	public static function flush_all_search_caches(): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$wpdb->query(
@@ -87,7 +93,7 @@ class PSA_Search {
 	 * Register REST API routes for external/headless access.
 	 * Note: REST route only returns existing published results — it does NOT trigger generation.
 	 */
-	public static function register_rest_routes() {
+	public static function register_rest_routes(): void {
 		register_rest_route(
 			'peptides/v1',
 			'/search',
@@ -171,7 +177,7 @@ class PSA_Search {
 	 * @param array $atts Shortcode attributes.
 	 * @return string HTML output.
 	 */
-	public static function render_search_form( $atts ) {
+	public static function render_search_form( $atts ): string {
 		self::$instance_count++;
 		$instance = self::$instance_count;
 
@@ -224,7 +230,7 @@ class PSA_Search {
 	 *
 	 * @return void Exits with wp_send_json_* responses.
 	 */
-	public static function ajax_search() {
+	public static function ajax_search(): void {
 		check_ajax_referer( 'psa_search_nonce', 'nonce' );
 
 		$query = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
@@ -276,7 +282,7 @@ class PSA_Search {
 	 * @param WP_Post $pending The pending post.
 	 * @return void Exits with wp_send_json_success().
 	 */
-	private static function handle_pending_retry( $pending ) {
+	private static function handle_pending_retry( $pending ): void {
 		$started     = (int) get_post_meta( $pending->ID, 'psa_generation_started', true );
 		$retry_count = (int) get_post_meta( $pending->ID, 'psa_generation_attempts', true );
 		$timed_out   = $started && ( time() - $started ) > PSA_Config::PENDING_TIMEOUT;
@@ -324,7 +330,7 @@ class PSA_Search {
 	 *
 	 * @return bool True if under limit, false if limit exceeded.
 	 */
-	private static function check_rate_limit() {
+	private static function check_rate_limit(): bool {
 		$ip       = psa_get_client_ip();
 		$rate_key = 'psa_rate_' . md5( $ip );
 
@@ -346,7 +352,7 @@ class PSA_Search {
 	 * @param string $query The search query (peptide name).
 	 * @return void Exits with wp_send_json_* responses.
 	 */
-	private static function handle_new_generation( $query ) {
+	private static function handle_new_generation( string $query ): void {
 		// Global daily generation cap to prevent cost overruns.
 		$daily_key   = 'psa_daily_gen_' . gmdate( 'Y-m-d' );
 		$daily_count = (int) get_transient( $daily_key );
@@ -424,7 +430,7 @@ class PSA_Search {
 	 * @param string $query Search term (peptide name or alias).
 	 * @return WP_Post|null Pending post object or null if not found.
 	 */
-	public static function find_pending_peptide( $query ) {
+	public static function find_pending_peptide( string $query ) {
 		global $wpdb;
 
 		$like = '%' . $wpdb->esc_like( $query ) . '%';
@@ -457,7 +463,7 @@ class PSA_Search {
 	 * @param string $peptide_name The canonical peptide name.
 	 * @return int|WP_Error Post ID or error.
 	 */
-	public static function create_pending_placeholder( $peptide_name ) {
+	public static function create_pending_placeholder( string $peptide_name ) {
 		$post_id = wp_insert_post(
 			array(
 				'post_type'    => 'peptide',
@@ -485,7 +491,7 @@ class PSA_Search {
 	 * @param int    $post_id      The placeholder post ID.
 	 * @param string $peptide_name The peptide to research.
 	 */
-	public static function schedule_background_generation( $post_id, $peptide_name ) {
+	public static function schedule_background_generation( int $post_id, string $peptide_name ): void {
 		$args = array( $post_id, $peptide_name );
 		if ( ! wp_next_scheduled( 'psa_generate_peptide_background', $args ) ) {
 			wp_schedule_single_event( time(), 'psa_generate_peptide_background', $args );
@@ -503,7 +509,7 @@ class PSA_Search {
 	 * @param string $query Search term.
 	 * @return array { results: array, total: int, query: string }
 	 */
-	public static function search_peptides( $query ) {
+	public static function search_peptides( string $query ): array {
 		global $wpdb;
 
 		// Check transient cache first.
@@ -564,7 +570,7 @@ class PSA_Search {
 	 * @param int $post_id The post ID.
 	 * @return array
 	 */
-	public static function format_peptide( $post_id ) {
+	public static function format_peptide( int $post_id ): array {
 		$post = get_post( $post_id );
 		if ( ! $post ) {
 			return array();

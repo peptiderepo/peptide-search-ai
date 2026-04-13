@@ -17,19 +17,25 @@ peptide-search-ai/
 │
 ├── includes/
 │   ├── class-psa-config.php           Configuration constants (rate limits, timeouts, tokens, TTL)
-│   ├── class-psa-error.php            [Deprecated] Standardized error response structure
-│   ├── class-psa-post-type.php        Custom Post Type (CPT) registration; meta field definitions
+│   ├── class-psa-encryption.php       AES-256-CBC encryption for API keys at rest
+│   ├── class-psa-post-type.php        CPT registration, peptide_category taxonomy, meta field definitions
 │   ├── class-psa-search.php           AJAX search, REST API route, shortcode rendering, cache mgmt
-│   ├── class-psa-ai-generator.php     AI calls (validation + generation); OpenRouter integration
+│   ├── class-psa-directory.php        Browsable directory: [peptide_directory] shortcode + /v1/compounds REST endpoint
+│   ├── class-psa-ai-generator.php     AI pipeline orchestrator (validation, generation, category assignment, meta save)
+│   ├── class-psa-openrouter.php       OpenRouter API HTTP layer (retry, rate limit, response parsing)
+│   ├── class-psa-kb-builder.php       Echo Knowledge Base article builder from AI data
+│   ├── class-psa-cost-tracker.php     API usage logging, monthly budget enforcement, cost estimation
 │   ├── class-psa-pubchem.php          PubChem PUG REST API integration for molecular enrichment
-│   ├── class-psa-admin.php            Settings page; API key, model, auto-publish configuration
-│   └── class-psa-template.php         Single peptide page rendering; quick-facts tables, badges
+│   ├── class-psa-admin.php            Settings page, usage dashboard, migration tools, re-enrichment actions
+│   └── class-psa-template.php         Single peptide page rendering; quick-facts, extended data, badges
 │
 ├── assets/
 │   ├── js/
-│   │   └── peptide-search.js          Frontend search, AJAX handler, result rendering (jQuery)
+│   │   ├── peptide-search.js          Frontend search, AJAX handler, result rendering (jQuery)
+│   │   └── psa-directory.js           Directory grid, category filters, detail modal (vanilla JS)
 │   └── css/
-│       └── peptide-search.css         Scoped styles for search UI, results, pending states, badges
+│       ├── peptide-search.css         Scoped styles for search UI, results, pending states, badges
+│       └── psa-directory.css          Directory card grid, filter pills, modal styles, dark mode support
 │
 └── .github/workflows/
     ├── ci.yml                         PHP lint, PHPCS, JS syntax checks on PR/push
@@ -94,6 +100,23 @@ graph LR
     style D fill:#ffcdd2
 ```
 
+### Directory REST API Flow (v4.3.0)
+
+```mermaid
+graph LR
+    A["GET /wp-json/peptide-search-ai/v1/compounds"] --> B["Query peptide CPT"]
+    B -->|"?category=slug"| C["tax_query on peptide_category"]
+    B -->|"?search=term"| D["WP_Query title search"]
+    C --> E["Paginated JSON response<br/>(compounds, total, total_pages)"]
+    D --> E
+    B --> E
+    E -->|"?fields=basic"| F["Lightweight: id, name, category, vial_size"]
+    E -->|"?fields=full"| G["Full: all meta fields + extras"]
+    
+    style A fill:#e3f2fd
+    style E fill:#c8e6c9
+```
+
 ### Background Generation Flow
 
 ```mermaid
@@ -140,10 +163,16 @@ graph TD
   - Max tokens: 4096
   - Called via WP-Cron (non-blocking)
 
-- **API Call:** `includes/class-psa-ai-generator.php` → `PSA_AI_Generator::call_openrouter()` (private static method)
+- **API Call:** `includes/class-psa-openrouter.php` → `PSA_OpenRouter::send_request()`
   - Endpoint: `https://openrouter.ai/api/v1/chat/completions`
   - Requires API key: database `psa_settings['api_key']` or constant `PSA_OPENROUTER_KEY`
   - Retry logic: 3 retries with exponential backoff (5s base delay)
+  - Response parsing via `PSA_OpenRouter::parse_response()` (strips think tags, code fences)
+
+- **KB Article Creation:** `includes/class-psa-kb-builder.php` → `PSA_KB_Builder::create_article()`
+  - Creates Echo Knowledge Base articles from AI-generated data
+  - Builds structured HTML with h2/h3 headings, category assignment
+  - Cross-references peptide post ↔ KB article via post meta
 
 **Configuration:** `Settings > Peptide Search AI` in WordPress admin
 - API Key field (or via `PSA_OPENROUTER_KEY` in wp-config.php for security)
@@ -264,6 +293,31 @@ All stored on peptide posts as post meta:
 | `psa_generation_attempts` | Retry counter | Integer | System (temporary) |
 | `psa_generation_error` | Error message (if generation failed) | Text | System (temporary) |
 | `psa_generation_completed` | Generation completion timestamp | Unix timestamp | System |
+| `psa_half_life` | Half-life display (e.g., "~4-6 hours") | Text | AI (v4.3.0) |
+| `psa_stability` | Stability info (e.g., "28 Days at 2°C") | Text | AI (v4.3.0) |
+| `psa_solubility` | Reconstitution solvent | Text | AI (v4.3.0) |
+| `psa_vial_size_mg` | Common vial size in mg | Float | AI (v4.3.0) |
+| `psa_storage_lyophilized` | Storage conditions (powder) | Text | AI (v4.3.0) |
+| `psa_storage_reconstituted` | Storage conditions (solution) | Text | AI (v4.3.0) |
+| `psa_typical_dose_mcg` | Typical research dose range | Text | AI (v4.3.0) |
+| `psa_cycle_parameters` | Cycle/protocol phase info | Text | AI (v4.3.0) |
+| `psa_amino_acid_count` | Number of amino acids | Integer | Derived from sequence (v4.3.0) |
+
+### Taxonomy: peptide_category (v4.3.0)
+
+Hierarchical taxonomy registered on the `peptide` CPT. Pre-populated terms:
+Tissue Repair, Lipid Metabolism, Aging Research, Dermatological, Metabolic, Growth Hormone, Immunology, Endocrine.
+
+Auto-assigned during AI generation via `PSA_AI_Generator::assign_category_term()`.
+Migration for existing peptides via admin "Migrate Existing Peptides to Categories" button.
+
+### Integration Hooks (v4.3.0)
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `psa_after_peptide_detail` | Action | Fired when a single peptide is rendered (single page or modal). Receives `$post_id`. |
+| `psa_directory_card_extras` | Filter | Allows adding HTML to directory cards (e.g., observation count badge). |
+| `psa_rest_compound_data` | Filter | Allows enriching REST compound data before response. Receives `$data`, `$post_id`. |
 
 ### Options (Plugin Settings)
 
@@ -349,9 +403,14 @@ $psa_settings = array(
 ## Testing
 
 **CI Pipeline:** `.github/workflows/ci.yml`
-- PHP 7.4, 8.1, 8.3 syntax checks
+- PHPUnit tests across PHP 7.4, 8.1, 8.3
+- PHP syntax checks across PHP 7.4, 8.1, 8.3
 - WordPress Coding Standards (PHPCS) validation
 - JavaScript syntax checks (Node.js)
+
+**Post-Deploy:** `.github/workflows/deploy.yml`
+- HTTP health check verifies site returns 200
+- REST API smoke test verifies `/wp-json/peptides/v1/search?q=BPC-157` responds
 
 **Manual Testing Checklist:**
 - Search for existing peptide → results appear

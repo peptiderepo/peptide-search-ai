@@ -70,6 +70,21 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_parse_args' ) ) {
+	function wp_parse_args( $args, $defaults = array() ) {
+		if ( is_array( $args ) ) {
+			return array_merge( $defaults, $args );
+		}
+		return $defaults;
+	}
+}
+
+if ( ! function_exists( 'esc_html' ) ) {
+	function esc_html( $text ) {
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
 // Define WP_Error class if it doesn't exist.
 if ( ! class_exists( 'WP_Error' ) ) {
 	class WP_Error {
@@ -111,4 +126,7 @@ if ( ! class_exists( 'WP_Error' ) ) {
 
 // Require the class files under test.
 require_once ABSPATH . 'includes/class-psa-config.php';
+require_once ABSPATH . 'includes/class-psa-cost-tracker.php';
+require_once ABSPATH . 'includes/class-psa-openrouter.php';
+require_once ABSPATH . 'includes/class-psa-kb-builder.php';
 require_once ABSPATH . 'includes/class-psa-ai-generator.php';

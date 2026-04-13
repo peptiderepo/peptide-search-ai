@@ -244,6 +244,26 @@ jobs:
 
             echo "✓ Deployment verification successful"
 
+      - name: HTTP health check
+        run: |
+          echo "Verifying site is accessible after deploy..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://peptiderepo.com/")
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✓ Site returned HTTP $HTTP_STATUS"
+          else
+            echo "⚠ Site returned HTTP $HTTP_STATUS (expected 200)"
+            echo "The deploy completed but the site may need attention."
+            exit 1
+          fi
+
+          # Verify REST API endpoint is responding.
+          REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://peptiderepo.com/wp-json/peptides/v1/search?q=BPC-157")
+          if [ "$REST_STATUS" -eq 200 ]; then
+            echo "✓ REST API returned HTTP $REST_STATUS"
+          else
+            echo "⚠ REST API returned HTTP $REST_STATUS (expected 200)"
+          fi
+
       - name: Deploy summary
         run: |
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY

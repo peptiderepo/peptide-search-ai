@@ -1,10 +1,17 @@
 <?php
+declare( strict_types=1 );
 /**
  * Handles AI content generation for new peptide entries.
- * Uses OpenRouter API to access a wide range of open-source and commercial models.
- * Includes peptide name validation and background generation.
+ *
+ * What: Orchestrates the full AI pipeline — validation, generation, PubChem enrichment, KB article creation.
+ * Who calls it: PSA_Search (validation + generation scheduling), WP-Cron (background_generate).
+ * Dependencies: PSA_Config, PSA_Cost_Tracker, PSA_Encryption, PSA_PubChem, PSA_Post_Type, OpenRouter API.
  *
  * @package PeptideSearchAI
+ * @see     includes/class-psa-search.php
+ * @see     includes/class-psa-cost-tracker.php
+ * @see     includes/class-psa-pubchem.php
+ * @see     includes/class-psa-post-type.php
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -13,12 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PSA_AI_Generator {
 
-	/**
-	 * OpenRouter API base URL.
-	 */
-	const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-	public static function init() {
+	public static function init(): void {
 		add_action( 'psa_generate_peptide_background', array( __CLASS__, 'background_generate' ), 10, 2 );
 	}
 
@@ -29,7 +31,7 @@ class PSA_AI_Generator {
 	 * @param string $name The name to validate.
 	 * @return array|WP_Error { is_valid: bool, canonical_name: string, reason: string }
 	 */
-	public static function validate_peptide_name( $name ) {
+	public static function validate_peptide_name( string $name ) {
 		// Input character validation — block injection attempts before API call.
 		if ( ! self::validate_peptide_input( $name ) ) {
 			return array(
@@ -62,7 +64,7 @@ class PSA_AI_Generator {
 		$prompt   = self::build_validation_prompt( $name );
 		// Allow filtering of validation prompt before sending.
 		$prompt = apply_filters( 'psa_validation_prompt', $prompt, $name );
-		$response = self::call_openrouter(
+		$response = PSA_OpenRouter::send_request(
 			$api_key,
 			$model ? $model : 'google/gemini-2.0-flash-001',
 			$prompt,
@@ -75,7 +77,7 @@ class PSA_AI_Generator {
 			return $response;
 		}
 
-		$data = self::parse_ai_response( $response );
+		$data = PSA_OpenRouter::parse_response( $response );
 		if ( is_wp_error( $data ) ) {
 			return array(
 				'is_valid'       => false,
@@ -91,7 +93,7 @@ class PSA_AI_Generator {
 		);
 
 		// Cache for 24 hours (using PSA_Config for consistency).
-		set_transient( $cache_key, $result, DAY_IN_SECONDS ); // Validation cache TTL
+		set_transient( $cache_key, $result, DAY_IN_SECONDS );
 
 		return $result;
 	}
@@ -102,7 +104,7 @@ class PSA_AI_Generator {
 	 * @param int    $post_id      The placeholder post ID.
 	 * @param string $peptide_name The peptide to research.
 	 */
-	public static function background_generate( $post_id, $peptide_name ) {
+	public static function background_generate( int $post_id, string $peptide_name ): void {
 		$post = get_post( $post_id );
 		if ( ! $post || 'draft' !== $post->post_status || 'peptide' !== $post->post_type ) {
 			error_log( 'PSA: background_generate skipped — post ' . $post_id . ' not a draft peptide.' );
@@ -150,7 +152,6 @@ class PSA_AI_Generator {
 		if ( ! empty( $options['use_pubchem'] ) ) {
 			$pubchem_result = PSA_PubChem::lookup( $peptide_name );
 			if ( is_wp_error( $pubchem_result ) ) {
-				// Log PubChem API failures.
 				error_log( 'PSA: PubChem lookup failed for "' . $peptide_name . '": ' . $pubchem_result->get_error_message() );
 			} elseif ( is_array( $pubchem_result ) ) {
 				$pubchem_data = $pubchem_result;
@@ -180,8 +181,11 @@ class PSA_AI_Generator {
 		// Save all meta fields — prefer PubChem data for molecular properties.
 		self::save_peptide_meta( $post_id, $result, $pubchem_data );
 
+		// Auto-assign peptide_category taxonomy term based on AI category.
+		self::assign_category_term( $post_id, $result );
+
 		// Create a matching Knowledge Base article.
-		self::create_kb_article( $post_id, $result, $peptide_name, $post_status );
+		PSA_KB_Builder::create_article( $post_id, $result, $peptide_name, $post_status );
 
 		// Clean up generation tracking.
 		delete_post_meta( $post_id, 'psa_generation_started' );
@@ -200,7 +204,7 @@ class PSA_AI_Generator {
 	 * @param string $peptide_name The peptide to research.
 	 * @return array|WP_Error Parsed peptide data or error.
 	 */
-	public static function generate_peptide_content( $peptide_name ) {
+	public static function generate_peptide_content( string $peptide_name ) {
 		$options = self::get_settings();
 		$api_key = $options['api_key'];
 		$model   = $options['ai_model'];
@@ -217,7 +221,7 @@ class PSA_AI_Generator {
 		$prompt   = self::build_generation_prompt( $peptide_name );
 		// Allow filtering of generation prompt before sending.
 		$prompt = apply_filters( 'psa_generation_prompt', $prompt, $peptide_name );
-		$response = self::call_openrouter(
+		$response = PSA_OpenRouter::send_request(
 			$api_key,
 			$model ? $model : 'google/gemini-2.5-flash',
 			$prompt,
@@ -230,7 +234,7 @@ class PSA_AI_Generator {
 			return $response;
 		}
 
-		return self::parse_ai_response( $response );
+		return PSA_OpenRouter::parse_response( $response );
 	}
 
 	/**
@@ -243,39 +247,29 @@ class PSA_AI_Generator {
 	 *     'total_estimated_cost_usd' => float,
 	 * }
 	 */
-	public static function dry_run( $peptide_name ) {
-		$options = self::get_settings();
+	public static function dry_run( string $peptide_name ): array {
+		$options          = self::get_settings();
 		$validation_model = $options['validation_model'] ? $options['validation_model'] : 'google/gemini-2.0-flash-001';
 		$generation_model = $options['ai_model'] ? $options['ai_model'] : 'google/gemini-2.5-flash';
 
-		// Estimate validation: prompt tokens from validation prompt + completion tokens.
-		$validation_prompt = self::build_validation_prompt( $peptide_name );
-		$validation_prompt_tokens = (int) ceil( strlen( $validation_prompt ) / 4 ); // rough estimate: 1 token ≈ 4 chars.
-		$validation_completion_tokens = PSA_Config::VALIDATION_MAX_TOKENS;
-		$validation_cost = PSA_Cost_Tracker::estimate_cost(
-			$validation_model,
-			$validation_prompt_tokens,
-			$validation_completion_tokens
-		);
+		$validation_prompt        = self::build_validation_prompt( $peptide_name );
+		$validation_prompt_tokens = (int) ceil( strlen( $validation_prompt ) / 4 );
+		$validation_completion    = PSA_Config::VALIDATION_MAX_TOKENS;
+		$validation_cost          = PSA_Cost_Tracker::estimate_cost( $validation_model, $validation_prompt_tokens, $validation_completion );
 
-		// Estimate generation: prompt tokens from generation prompt + completion tokens.
-		$generation_prompt = self::build_generation_prompt( $peptide_name );
+		$generation_prompt        = self::build_generation_prompt( $peptide_name );
 		$generation_prompt_tokens = (int) ceil( strlen( $generation_prompt ) / 4 );
-		$generation_completion_tokens = PSA_Config::GENERATION_MAX_TOKENS;
-		$generation_cost = PSA_Cost_Tracker::estimate_cost(
-			$generation_model,
-			$generation_prompt_tokens,
-			$generation_completion_tokens
-		);
+		$generation_completion    = PSA_Config::GENERATION_MAX_TOKENS;
+		$generation_cost          = PSA_Cost_Tracker::estimate_cost( $generation_model, $generation_prompt_tokens, $generation_completion );
 
 		return array(
-			'validation' => array(
-				'tokens'              => $validation_prompt_tokens + $validation_completion_tokens,
-				'estimated_cost_usd'  => $validation_cost,
+			'validation'              => array(
+				'tokens'             => $validation_prompt_tokens + $validation_completion,
+				'estimated_cost_usd' => $validation_cost,
 			),
-			'generation' => array(
-				'tokens'              => $generation_prompt_tokens + $generation_completion_tokens,
-				'estimated_cost_usd'  => $generation_cost,
+			'generation'              => array(
+				'tokens'             => $generation_prompt_tokens + $generation_completion,
+				'estimated_cost_usd' => $generation_cost,
 			),
 			'total_estimated_cost_usd' => $validation_cost + $generation_cost,
 		);
@@ -290,7 +284,7 @@ class PSA_AI_Generator {
 	 *
 	 * @return array
 	 */
-	private static function get_settings() {
+	private static function get_settings(): array {
 		$defaults = array(
 			'api_key'          => '',
 			'ai_model'         => '',
@@ -307,8 +301,6 @@ class PSA_AI_Generator {
 			if ( false !== $decrypted ) {
 				$settings['api_key'] = $decrypted;
 			}
-			// If decrypt fails, the key might be stored in plaintext (pre-encryption migration).
-			// Leave it as-is for backward compatibility — it will be encrypted on next save.
 		}
 
 		// Prefer wp-config.php constant over database value for security.
@@ -316,48 +308,133 @@ class PSA_AI_Generator {
 			$settings['api_key'] = PSA_OPENROUTER_KEY;
 		}
 
-		// Allow filtering of settings before use.
 		$settings = apply_filters( 'psa_ai_settings', $settings );
 
 		return $settings;
 	}
 
 	/**
-	 * Save meta fields for a peptide post.
+	 * Save meta fields for a peptide post (core + extended).
 	 *
 	 * @param int        $post_id      The post ID.
 	 * @param array      $ai_data      AI-generated data.
 	 * @param array|null $pubchem_data PubChem data (or null).
 	 */
-	private static function save_peptide_meta( $post_id, $ai_data, $pubchem_data ) {
+	private static function save_peptide_meta( int $post_id, array $ai_data, ?array $pubchem_data ): void {
+		// Derive amino acid count from sequence if available.
+		$amino_acid_count = '';
+		$sequence         = $ai_data['sequence'] ?? '';
+		if ( ! empty( $sequence ) ) {
+			// Count residues: split on dashes for three-letter codes, or count chars for single-letter.
+			if ( strpos( $sequence, '-' ) !== false ) {
+				$amino_acid_count = (string) count( explode( '-', $sequence ) );
+			} else {
+				$amino_acid_count = (string) strlen( preg_replace( '/[^A-Z]/', '', $sequence ) );
+			}
+		}
+		// AI may also return this directly.
+		if ( ! empty( $ai_data['amino_acid_count'] ) ) {
+			$amino_acid_count = (string) intval( $ai_data['amino_acid_count'] );
+		}
+
 		$meta = array(
-			'psa_sequence'          => $ai_data['sequence'] ?? '',
-			'psa_molecular_weight'  => ! empty( $pubchem_data['molecular_weight'] )
+			'psa_sequence'              => $ai_data['sequence'] ?? '',
+			'psa_molecular_weight'      => ! empty( $pubchem_data['molecular_weight'] )
 				? $pubchem_data['molecular_weight']
 				: ( $ai_data['molecular_weight'] ?? '' ),
-			'psa_molecular_formula' => ! empty( $pubchem_data['molecular_formula'] )
+			'psa_molecular_formula'     => ! empty( $pubchem_data['molecular_formula'] )
 				? $pubchem_data['molecular_formula']
 				: ( $ai_data['molecular_formula'] ?? '' ),
-			'psa_aliases'           => $ai_data['aliases'] ?? '',
-			'psa_mechanism'         => $ai_data['mechanism'] ?? '',
-			'psa_overview'          => $ai_data['overview'] ?? $ai_data['description'] ?? '',
-			'psa_category_label'    => $ai_data['category_label'] ?? '',
-			'psa_origin'            => $ai_data['origin'] ?? '',
-			'psa_research_apps'     => $ai_data['research_benefits'] ?? ( $ai_data['research_applications'] ?? '' ),
-			'psa_safety_profile'    => $ai_data['safety_side_effects'] ?? ( $ai_data['safety_profile'] ?? '' ),
-			'psa_dosage_info'       => $ai_data['administration_dosing'] ?? ( $ai_data['dosage_info'] ?? '' ),
-			'psa_legal_regulatory'  => $ai_data['legal_regulatory'] ?? '',
-			'psa_references'        => $ai_data['references'] ?? '',
-			'psa_category'          => $ai_data['category'] ?? '',
-			'psa_source'            => ! empty( $pubchem_data ) ? 'pubchem' : 'ai-generated',
-			'psa_pubchem_cid'       => $pubchem_data['cid'] ?? '',
+			'psa_aliases'               => $ai_data['aliases'] ?? '',
+			'psa_mechanism'             => $ai_data['mechanism'] ?? '',
+			'psa_overview'              => $ai_data['overview'] ?? $ai_data['description'] ?? '',
+			'psa_category_label'        => $ai_data['category_label'] ?? '',
+			'psa_origin'                => $ai_data['origin'] ?? '',
+			'psa_research_apps'         => $ai_data['research_benefits'] ?? ( $ai_data['research_applications'] ?? '' ),
+			'psa_safety_profile'        => $ai_data['safety_side_effects'] ?? ( $ai_data['safety_profile'] ?? '' ),
+			'psa_dosage_info'           => $ai_data['administration_dosing'] ?? ( $ai_data['dosage_info'] ?? '' ),
+			'psa_legal_regulatory'      => $ai_data['legal_regulatory'] ?? '',
+			'psa_references'            => $ai_data['references'] ?? '',
+			'psa_category'              => $ai_data['category'] ?? '',
+			'psa_source'                => ! empty( $pubchem_data ) ? 'pubchem' : 'ai-generated',
+			'psa_pubchem_cid'           => $pubchem_data['cid'] ?? '',
+			// Extended fields (v4.3.0).
+			'psa_half_life'             => $ai_data['half_life'] ?? '',
+			'psa_stability'             => $ai_data['stability'] ?? '',
+			'psa_solubility'            => $ai_data['solubility'] ?? '',
+			'psa_vial_size_mg'          => $ai_data['vial_size_mg'] ?? '',
+			'psa_storage_lyophilized'   => $ai_data['storage_lyophilized'] ?? '',
+			'psa_storage_reconstituted' => $ai_data['storage_reconstituted'] ?? '',
+			'psa_typical_dose_mcg'      => $ai_data['typical_dose_mcg'] ?? '',
+			'psa_cycle_parameters'      => $ai_data['cycle_parameters'] ?? '',
+			'psa_amino_acid_count'      => $amino_acid_count,
 		);
 
-		// Allow filtering of meta before save.
 		$meta = apply_filters( 'psa_peptide_meta', $meta, $post_id, $ai_data, $pubchem_data );
 
 		foreach ( $meta as $key => $value ) {
 			update_post_meta( $post_id, $key, $value );
+		}
+	}
+
+	/**
+	 * Auto-assign a peptide_category taxonomy term based on AI-returned category.
+	 *
+	 * Maps the AI's free-text category to the registered taxonomy terms.
+	 * Falls back to fuzzy matching if no exact match found.
+	 *
+	 * @param int   $post_id The peptide post ID.
+	 * @param array $ai_data AI-generated data containing 'category' or 'category_label'.
+	 */
+	private static function assign_category_term( int $post_id, array $ai_data ): void {
+		$ai_category = $ai_data['category'] ?? $ai_data['category_label'] ?? '';
+		if ( empty( $ai_category ) ) {
+			return;
+		}
+
+		// Mapping from AI free-text categories to taxonomy slugs.
+		// Why: AI returns varied labels ("GH Secretagogues", "Healing & Repair") that need
+		// to map to our controlled vocabulary of taxonomy terms.
+		$category_map = array(
+			'gh secretagogues'          => 'growth-hormone',
+			'growth hormone'            => 'growth-hormone',
+			'healing & repair'          => 'tissue-repair',
+			'healing and repair'        => 'tissue-repair',
+			'tissue repair'             => 'tissue-repair',
+			'tissue healing'            => 'tissue-repair',
+			'cytoprotective'            => 'tissue-repair',
+			'melanocortin peptides'     => 'dermatological',
+			'melanocortin'              => 'dermatological',
+			'dermatological'            => 'dermatological',
+			'metabolic & anti-aging'    => 'metabolic',
+			'metabolic and anti-aging'  => 'metabolic',
+			'metabolic'                 => 'metabolic',
+			'anti-aging'                => 'aging-research',
+			'aging research'            => 'aging-research',
+			'nootropic & neuroprotective' => 'immunology',
+			'nootropic'                 => 'immunology',
+			'neuroprotective'           => 'immunology',
+			'immunology'                => 'immunology',
+			'immune'                    => 'immunology',
+			'lipid metabolism'          => 'lipid-metabolism',
+			'endocrine'                 => 'endocrine',
+		);
+
+		$lower = strtolower( trim( $ai_category ) );
+		$slug  = $category_map[ $lower ] ?? '';
+
+		// Fuzzy fallback: check if AI category contains any known slug keyword.
+		if ( empty( $slug ) ) {
+			foreach ( PSA_Post_Type::DEFAULT_CATEGORIES as $cat_slug => $cat_name ) {
+				if ( stripos( $ai_category, $cat_name ) !== false || stripos( $ai_category, str_replace( '-', ' ', $cat_slug ) ) !== false ) {
+					$slug = $cat_slug;
+					break;
+				}
+			}
+		}
+
+		if ( ! empty( $slug ) ) {
+			wp_set_object_terms( $post_id, $slug, 'peptide_category' );
 		}
 	}
 
@@ -367,12 +444,10 @@ class PSA_AI_Generator {
 	 * @param string $name The peptide name to validate.
 	 * @return bool True if input looks legitimate.
 	 */
-	private static function validate_peptide_input( $name ) {
-		// Allow only characters that appear in legitimate peptide names.
+	private static function validate_peptide_input( string $name ): bool {
 		if ( ! preg_match( '/^[\p{L}\d\s\-\(\),\.\/\+\[\]]+$/u', $name ) ) {
 			return false;
 		}
-		// Block obvious prompt injection patterns.
 		$blocked = array( 'ignore', 'instruction', 'override', 'system prompt', 'forget', 'disregard', 'pretend' );
 		$lower   = strtolower( $name );
 		foreach ( $blocked as $word ) {
@@ -386,14 +461,10 @@ class PSA_AI_Generator {
 	/**
 	 * Build the lightweight validation prompt.
 	 *
-	 * Uses wp_json_encode() to safely encode the peptide name within the prompt.
-	 * This ensures special characters and quotes are properly escaped before sending to the AI.
-	 * The JSON-encoded format also helps the AI parser recognize the input clearly.
-	 *
 	 * @param string $name The peptide name to validate.
 	 * @return string Prompt text ready to send to OpenRouter API.
 	 */
-	private static function build_validation_prompt( $name ) {
+	private static function build_validation_prompt( string $name ): string {
 		$json_name = wp_json_encode( $name );
 		return <<<PROMPT
 You are a peptide and biochemistry expert. Determine if the peptide name given in the following JSON-encoded string is a real, recognized peptide, protein fragment, or peptide-based compound.
@@ -417,19 +488,12 @@ PROMPT;
 	}
 
 	/**
-	 * Build the comprehensive generation prompt.
-	 *
-	 * Constructs a detailed prompt that instructs the AI to generate structured JSON output
-	 * with all required fields for a complete peptide database entry (name, sequence, mechanism,
-	 * research benefits, dosing, safety, legal status, references, etc).
-	 *
-	 * The prompt is designed to ensure the AI returns clean, factual information suitable for
-	 * scientific audiences. Uses JSON encoding for the peptide name to properly escape special characters.
+	 * Build the comprehensive generation prompt (v4.3.0: includes extended fields).
 	 *
 	 * @param string $peptide_name The peptide to research.
 	 * @return string Prompt text ready to send to OpenRouter API.
 	 */
-	private static function build_generation_prompt( $peptide_name ) {
+	private static function build_generation_prompt( string $peptide_name ): string {
 		$json_name = wp_json_encode( $peptide_name );
 		return <<<PROMPT
 You are a scientific writer specializing in peptide research. Generate a comprehensive database entry for the peptide given in the following JSON-encoded string.
@@ -448,12 +512,20 @@ Return ONLY valid JSON (no markdown fences, no commentary) with exactly these fi
   "molecular_formula": "Chemical formula (e.g. C62H98N16O22)",
   "overview": "2-3 paragraphs: what this peptide is, its origin, discovery, and significance. Written for a scientifically literate audience.",
   "mechanism": "Detailed mechanism of action. Start with an intro paragraph, then describe each pathway as a labeled item like: Pathway name: Description. Separate items with double newlines.",
-  "research_benefits": "Detailed research applications organized by therapeutic area. Use area names as subheadings followed by a paragraph, e.g.:\n\nMusculoskeletal Healing\nParagraph about musculoskeletal research...\n\nGastrointestinal Protection\nParagraph about GI research...\n\nInclude 3-5 areas depending on the peptide.",
+  "research_benefits": "Detailed research applications organized by therapeutic area. Use area names as subheadings followed by a paragraph.",
   "administration_dosing": "Include a disclaimer that this is from research only. Then describe: typical research dose range, routes of administration, frequency, and duration from studies.",
-  "safety_side_effects": "Known safety profile from animal studies. Include any anecdotally reported side effects. Note theoretical concerns. Mention that long-term human safety data is limited.",
+  "safety_side_effects": "Known safety profile from animal studies. Include any anecdotally reported side effects. Note theoretical concerns.",
   "legal_regulatory": "Current regulatory and legal status. Mention FDA status, WADA status if applicable, classification as research chemical.",
   "references": "5-8 real published scientific references with authors, title, journal, year. Use real studies only.",
-  "category": "Classify into exactly ONE: GH Secretagogues, Healing & Repair, Melanocortin Peptides, Metabolic & Anti-Aging, Nootropic & Neuroprotective"
+  "category": "Classify into exactly ONE of: Tissue Repair, Lipid Metabolism, Aging Research, Dermatological, Metabolic, Growth Hormone, Immunology, Endocrine",
+  "half_life": "Approximate half-life (e.g. '~4-6 hours', '15-20 minutes'). Write 'Unknown' if not established.",
+  "stability": "Stability information (e.g. '28 Days at 2-8°C after reconstitution'). Include lyophilized and reconstituted if available.",
+  "solubility": "Recommended reconstitution solvent (e.g. 'Bacteriostatic Water', 'Sterile Water')",
+  "vial_size_mg": "Most common research vial size in mg as a number (e.g. 5, 10, 2). Use 0 if not applicable.",
+  "storage_lyophilized": "Storage conditions for lyophilized/powder form (e.g. '-20°C, protect from light')",
+  "storage_reconstituted": "Storage conditions after reconstitution (e.g. '2-8°C, use within 28 days')",
+  "typical_dose_mcg": "Typical research dose range (e.g. '200-300 mcg', '100-200 mcg/kg'). Include units.",
+  "cycle_parameters": "Typical research cycle/protocol info (e.g. '4-6 weeks on, 2 weeks off', 'Daily subcutaneous injection')"
 }
 
 Important:
@@ -461,367 +533,8 @@ Important:
 - If information is uncertain or unknown, say so explicitly rather than fabricating data.
 - All content is for research and educational purposes.
 - Write in clean paragraphs. Do not use markdown formatting symbols like # or ** or *.
-- For research_benefits, use the therapeutic area name on its own line as a subheading, followed by a descriptive paragraph.
+- For the "category" field, use EXACTLY one of the eight listed categories.
 PROMPT;
 	}
 
-	// -------------------------------------------------------------------------
-	// OpenRouter API Call
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Call OpenRouter API with automatic retry on rate limits.
-	 *
-	 * Implements exponential backoff retry strategy for rate limit (429) errors.
-	 * On first rate limit: waits 5s before retry.
-	 * On second rate limit: waits 10s before retry.
-	 * On third rate limit: waits 20s before final attempt.
-	 * Other errors are returned immediately without retry.
-	 *
-	 * @param string $api_key      The OpenRouter API key.
-	 * @param string $model        The model identifier.
-	 * @param string $prompt       The prompt text.
-	 * @param int    $max_tokens   Maximum tokens to generate.
-	 * @param string $request_type 'validation' or 'generation' (default).
-	 * @param string $peptide_name Peptide name for logging.
-	 * @return string|WP_Error Response text or error.
-	 */
-	private static function call_openrouter( $api_key, $model, $prompt, $max_tokens = PSA_Config::GENERATION_MAX_TOKENS, $request_type = 'generation', $peptide_name = '' ) {
-		$max_retries = PSA_Config::API_RETRY_MAX;
-		$base_delay  = PSA_Config::API_RETRY_BASE_DELAY; // seconds
-
-		for ( $attempt = 1; $attempt <= $max_retries; $attempt++ ) {
-			$result = self::call_openrouter_once( $api_key, $model, $prompt, $max_tokens, $request_type, $peptide_name );
-
-			// If not a rate limit error, return immediately.
-			if ( ! is_wp_error( $result ) || 'rate_limited' !== $result->get_error_code() ) {
-				return $result;
-			}
-
-			// Rate limited — retry with exponential backoff.
-			if ( $attempt < $max_retries ) {
-				$delay = $base_delay * pow( 2, $attempt - 1 ); // 5s, 10s, 20s
-				// Avoid blocking PHP workers during WP-Cron execution.
-				if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
-					error_log( 'PSA: Rate limited during cron on attempt ' . $attempt . '/' . $max_retries . '. Returning to free PHP worker.' );
-					return new WP_Error( 'rate_limited', 'Rate limited during background generation. Will retry on next cron trigger.' );
-				}
-				error_log( 'PSA: Rate limited on attempt ' . $attempt . '/' . $max_retries . '. Retrying in ' . $delay . 's...' );
-				sleep( $delay );
-			}
-		}
-
-		error_log( 'PSA: All ' . $max_retries . ' attempts failed due to rate limiting.' );
-		return new WP_Error( 'rate_limited', 'OpenRouter rate limit reached after ' . $max_retries . ' retries. Consider adding credits at openrouter.ai or switching to a non-free model.' );
-	}
-
-	/**
-	 * Single OpenRouter API call (no retry).
-	 *
-	 * @param string $api_key      The OpenRouter API key.
-	 * @param string $model        The model identifier.
-	 * @param string $prompt       The prompt text.
-	 * @param int    $max_tokens   Maximum tokens to generate.
-	 * @param string $request_type 'validation' or 'generation' (default).
-	 * @param string $peptide_name Peptide name for logging.
-	 * @return string|WP_Error Response text or error.
-	 */
-	private static function call_openrouter_once( $api_key, $model, $prompt, $max_tokens = 4096, $request_type = 'generation', $peptide_name = '' ) {
-		$site_url  = get_bloginfo( 'url' );
-		$site_name = get_bloginfo( 'name' );
-
-		$response = wp_remote_post(
-			self::API_URL,
-			array(
-				'timeout' => 120,
-				'headers' => array(
-					'Content-Type'    => 'application/json',
-					'Authorization'   => 'Bearer ' . $api_key,
-					'HTTP-Referer'    => $site_url,
-					'X-Title'         => $site_name,
-				),
-				'body' => wp_json_encode(
-					array(
-						'model'       => $model,
-						'messages'    => array(
-							array(
-								'role'    => 'system',
-								'content' => 'You are a scientific database assistant. Return only valid JSON.',
-							),
-							array(
-								'role'    => 'user',
-								'content' => $prompt,
-							),
-						),
-						'max_tokens'  => $max_tokens,
-						'temperature' => 0.3,
-					)
-				),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			error_log( 'PSA: OpenRouter connection error: ' . $response->get_error_message() );
-			return new WP_Error( 'api_error', 'Failed to connect to OpenRouter API: ' . $response->get_error_message() );
-		}
-
-		$code     = wp_remote_retrieve_response_code( $response );
-		$raw_body = wp_remote_retrieve_body( $response );
-		$body     = json_decode( $raw_body, true );
-
-		error_log( 'PSA: OpenRouter response code: ' . $code . ' for model: ' . $model );
-
-		if ( 200 !== $code ) {
-			if ( 429 === $code ) {
-				error_log( 'PSA: OpenRouter rate limited (429)' );
-				return new WP_Error( 'rate_limited', 'OpenRouter rate limit reached. Please try again in a few moments.' );
-			}
-			if ( 402 === $code ) {
-				error_log( 'PSA: OpenRouter insufficient credits (402)' );
-				return new WP_Error( 'insufficient_credits', 'OpenRouter account has insufficient credits. Please add funds at openrouter.ai.' );
-			}
-			$msg = $body['error']['message'] ?? ( 'Unknown error (HTTP ' . $code . ')' );
-			error_log( 'PSA: OpenRouter API error (' . $code . '): ' . $msg );
-			error_log( 'PSA: OpenRouter raw response: ' . substr( $raw_body, 0, 500 ) );
-			return new WP_Error( 'api_error', 'OpenRouter API error: ' . $msg );
-		}
-
-		if ( empty( $body['choices'][0]['message']['content'] ) ) {
-			error_log( 'PSA: OpenRouter returned empty content. Raw: ' . substr( $raw_body, 0, 500 ) );
-			return new WP_Error( 'api_error', 'OpenRouter API returned an empty response.' );
-		}
-
-		// Log API call with token usage.
-		$prompt_tokens = (int) ( $body['usage']['prompt_tokens'] ?? 0 );
-		$completion_tokens = (int) ( $body['usage']['completion_tokens'] ?? 0 );
-
-		PSA_Cost_Tracker::log_api_call(
-			array(
-				'provider'       => 'openrouter',
-				'model'          => $model,
-				'prompt_tokens'  => $prompt_tokens,
-				'completion_tokens' => $completion_tokens,
-				'request_type'   => $request_type,
-				'peptide_name'   => $peptide_name,
-				'success'        => true,
-			)
-		);
-
-		return $body['choices'][0]['message']['content'];
-	}
-
-	/**
-	 * Parse AI response text into structured data.
-	 *
-	 * @param string $response_text Raw response text.
-	 * @return array|WP_Error Parsed data or error.
-	 */
-	private static function parse_ai_response( $response_text ) {
-		// Strip any <think>...</think> tags (some models like DeepSeek include reasoning).
-		$cleaned = preg_replace( '/<think>.*?<\/think>/s', '', $response_text );
-
-		// Strip markdown code fences if present.
-		$cleaned = preg_replace( '/^```(?:json)?\s*/m', '', $cleaned );
-		$cleaned = preg_replace( '/\s*```\s*$/m', '', $cleaned );
-		$cleaned = trim( $cleaned );
-
-		$data = json_decode( $cleaned, true );
-		if ( JSON_ERROR_NONE !== json_last_error() ) {
-			error_log( 'PSA: JSON parse error: ' . json_last_error_msg() . '. Raw (first 500 chars): ' . substr( $response_text, 0, 500 ) );
-			return new WP_Error(
-				'parse_error',
-				'Failed to parse AI response as JSON: ' . json_last_error_msg()
-			);
-		}
-
-		return $data;
-	}
-
-	/**
-	 * Create a matching Echo Knowledge Base article with full structured content.
-	 *
-	 * @param int   $peptide_post_id The peptide post ID.
-	 * @param array $ai_data         The parsed AI data.
-	 * @param string $peptide_name   The peptide name.
-	 * @param string $post_status    The post status (default: 'draft').
-	 */
-	private static function create_kb_article( $peptide_post_id, $ai_data, $peptide_name, $post_status = 'draft' ) {
-		if ( ! post_type_exists( 'epkb_post_type_1' ) ) {
-			error_log( 'PSA: Echo Knowledge Base not active — skipping KB article.' );
-			return;
-		}
-
-		$title = sanitize_text_field( $ai_data['name'] ?? $peptide_name );
-		$existing = get_posts(
-			array(
-				'post_type'   => 'epkb_post_type_1',
-				'title'       => $title,
-				'post_status' => 'any',
-				'numberposts' => 1,
-			)
-		);
-
-		if ( ! empty( $existing ) ) {
-			error_log( 'PSA: KB article already exists for "' . $peptide_name . '".' );
-			return;
-		}
-
-		// Build header meta line.
-		$cat_label = ! empty( $ai_data['category_label'] ) ? $ai_data['category_label'] : '';
-		$origin    = ! empty( $ai_data['origin'] ) ? $ai_data['origin'] : '';
-		$sequence  = ! empty( $ai_data['sequence'] ) ? $ai_data['sequence'] : '';
-
-		$header = '';
-		if ( $cat_label ) {
-			$header .= '<strong>Category:</strong> ' . esc_html( $cat_label );
-		}
-		if ( $origin ) {
-			$header .= ' | <strong>Origin:</strong> ' . esc_html( $origin );
-		}
-		if ( $sequence ) {
-			$header .= ' | <strong>Sequence:</strong> ' . esc_html( $sequence );
-		}
-
-		// Build full article content.
-		$c = $header ? '<p>' . $header . '</p>' . "\n\n" : '';
-
-		// Overview.
-		$c .= '<h2>Overview</h2>' . "\n";
-		$c .= self::paragraphs( $ai_data['overview'] ?? $ai_data['description'] ?? '' );
-
-		// Mechanism of Action.
-		if ( ! empty( $ai_data['mechanism'] ) ) {
-			$c .= '<h2>Mechanism of Action</h2>' . "\n";
-			$c .= self::paragraphs( $ai_data['mechanism'] );
-		}
-
-		// Research & Potential Benefits (with h3 subheadings).
-		if ( ! empty( $ai_data['research_benefits'] ) || ! empty( $ai_data['research_applications'] ) ) {
-			$c .= '<h2>Research &amp; Potential Benefits</h2>' . "\n";
-			$c .= '<p><em>The following potential benefits are based on animal studies and preclinical research. Human clinical trial data is extremely limited.</em></p>' . "\n";
-			$research = $ai_data['research_benefits'] ?? $ai_data['research_applications'] ?? '';
-			$c .= self::research_with_subheadings( $research );
-		}
-
-		// Administration & Dosing.
-		if ( ! empty( $ai_data['administration_dosing'] ) || ! empty( $ai_data['dosage_info'] ) ) {
-			$c .= '<h2>Administration &amp; Dosing (Research Context)</h2>' . "\n";
-			$c .= '<p><strong>Important:</strong> The following dosing information is derived from animal studies and extrapolated research. This peptide is not approved for human use. This information is provided for educational purposes only.</p>' . "\n";
-			$c .= self::paragraphs( $ai_data['administration_dosing'] ?? $ai_data['dosage_info'] ?? '' );
-		}
-
-		// Safety & Side Effects.
-		if ( ! empty( $ai_data['safety_side_effects'] ) || ! empty( $ai_data['safety_profile'] ) ) {
-			$c .= '<h2>Safety &amp; Side Effects</h2>' . "\n";
-			$c .= self::paragraphs( $ai_data['safety_side_effects'] ?? $ai_data['safety_profile'] ?? '' );
-		}
-
-		// Legal & Regulatory Status.
-		if ( ! empty( $ai_data['legal_regulatory'] ) ) {
-			$c .= '<h2>Legal &amp; Regulatory Status</h2>' . "\n";
-			$c .= self::paragraphs( $ai_data['legal_regulatory'] );
-		}
-
-		// References.
-		if ( ! empty( $ai_data['references'] ) ) {
-			$c .= '<h2>Notable Research References</h2>' . "\n";
-			$c .= self::paragraphs( $ai_data['references'] );
-		}
-
-		// Medical Disclaimer.
-		$c .= "\n" . '<p><strong>Medical Disclaimer:</strong> The information on this page is provided for educational and research purposes only. This peptide is not approved for human therapeutic use. Nothing on this page constitutes medical advice. Always consult a licensed healthcare professional before using any peptide, supplement, or research chemical.</p>';
-
-		$kb_post_id = wp_insert_post(
-			array(
-				'post_title'   => $title,
-				'post_content' => wp_kses_post( $c ),
-				'post_type'    => 'epkb_post_type_1',
-				'post_status'  => $post_status,
-			),
-			true
-		);
-
-		if ( is_wp_error( $kb_post_id ) ) {
-			error_log( 'PSA: Failed to create KB article: ' . $kb_post_id->get_error_message() );
-			return;
-		}
-
-		// Assign KB category.
-		$category_map = array(
-			'GH Secretagogues'          => 'gh-secretagogues',
-			'Healing & Repair'          => 'healing-repair',
-			'Melanocortin Peptides'     => 'melanocortin-peptides',
-			'Metabolic & Anti-Aging'    => 'metabolic-anti-aging',
-			'Nootropic & Neuroprotective' => 'nootropic-neuroprotective',
-		);
-
-		$cat_name = trim( $ai_data['category'] ?? '' );
-		if ( isset( $category_map[ $cat_name ] ) ) {
-			$term = get_term_by( 'slug', $category_map[ $cat_name ], 'epkb_post_type_1_category' );
-			if ( $term ) {
-				wp_set_object_terms( $kb_post_id, array( (int) $term->term_id ), 'epkb_post_type_1_category' );
-			}
-		}
-
-		update_post_meta( $peptide_post_id, 'psa_kb_article_id', $kb_post_id );
-		update_post_meta( $kb_post_id, 'psa_peptide_post_id', $peptide_post_id );
-
-		error_log( 'PSA: Created KB article #' . $kb_post_id . ' for "' . $peptide_name . '"' );
-	}
-
-	/**
-	 * Convert text to HTML paragraphs.
-	 */
-	private static function paragraphs( $text ) {
-		if ( empty( $text ) ) {
-			return '';
-		}
-		$text  = str_replace( "\r\n", "\n", $text );
-		$parts = preg_split( '/\n{2,}/', trim( $text ) );
-		$out   = '';
-		foreach ( $parts as $p ) {
-			$p = trim( $p );
-			if ( '' === $p ) {
-				continue;
-			}
-			$out .= '<p>' . wp_kses_post( $p ) . '</p>' . "\n";
-		}
-		return $out;
-	}
-
-	/**
-	 * Parse research text into h3 subheadings + paragraphs.
-	 */
-	private static function research_with_subheadings( $text ) {
-		if ( empty( $text ) ) {
-			return '';
-		}
-		$text   = str_replace( "\r\n", "\n", trim( $text ) );
-		$blocks = preg_split( '/\n{2,}/', $text );
-		$out    = '';
-		foreach ( $blocks as $block ) {
-			$block = trim( $block );
-			if ( '' === $block ) {
-				continue;
-			}
-			// If block is short (under 80 chars) and has no period, treat as a subheading.
-			if ( strlen( $block ) < 80 && strpos( $block, '.' ) === false ) {
-				$out .= '<h3>' . esc_html( $block ) . '</h3>' . "\n";
-			} else {
-				// Check if first line is a subheading followed by content.
-				$first_nl = strpos( $block, "\n" );
-				if ( false !== $first_nl ) {
-					$first_line = trim( substr( $block, 0, $first_nl ) );
-					$rest       = trim( substr( $block, $first_nl + 1 ) );
-					if ( strlen( $first_line ) < 80 && strpos( $first_line, '.' ) === false ) {
-						$out .= '<h3>' . esc_html( $first_line ) . '</h3>' . "\n";
-						$out .= '<p>' . wp_kses_post( $rest ) . '</p>' . "\n";
-						continue;
-					}
-				}
-				$out .= '<p>' . wp_kses_post( $block ) . '</p>' . "\n";
-			}
-		}
-		return $out;
-	}
 }

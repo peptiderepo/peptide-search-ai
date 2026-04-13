@@ -1,7 +1,11 @@
 <?php
+declare( strict_types=1 );
 /**
  * Configuration constants for Peptide Search AI.
- * Centralizes all magic numbers and configuration values.
+ *
+ * What: Centralizes all magic numbers and configuration values used across the plugin.
+ * Who calls it: Every class in the plugin reads these constants for limits, timeouts, and defaults.
+ * Dependencies: None (pure constants class).
  *
  * @package PeptideSearchAI
  */

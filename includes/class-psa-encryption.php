@@ -1,4 +1,5 @@
 <?php
+declare( strict_types=1 );
 /**
  * Handles encryption/decryption of sensitive data at rest.
  *
@@ -25,7 +26,7 @@ class PSA_Encryption {
 	 * @param string $plaintext The plaintext to encrypt.
 	 * @return string|false Base64-encoded IV + ciphertext, or false on failure.
 	 */
-	public static function encrypt( $plaintext ) {
+	public static function encrypt( string $plaintext ) {
 		if ( empty( $plaintext ) ) {
 			return false;
 		}
@@ -61,7 +62,7 @@ class PSA_Encryption {
 	 * @param string $ciphertext The base64-encoded IV + ciphertext.
 	 * @return string|false Decrypted plaintext, or false on failure.
 	 */
-	public static function decrypt( $ciphertext ) {
+	public static function decrypt( string $ciphertext ) {
 		if ( empty( $ciphertext ) ) {
 			return false;
 		}
@@ -96,7 +97,7 @@ class PSA_Encryption {
 	 * @param string $value The value to check.
 	 * @return bool True if the value appears to be encrypted.
 	 */
-	public static function is_encrypted( $value ) {
+	public static function is_encrypted( $value ): bool {
 		if ( empty( $value ) || ! is_string( $value ) ) {
 			return false;
 		}
