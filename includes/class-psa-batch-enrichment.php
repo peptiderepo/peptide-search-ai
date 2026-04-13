@@ -68,22 +68,10 @@ class PSA_Batch_Enrichment {
 
 		check_ajax_referer( 'psa_batch_enrich', '_nonce' );
 
-		// Respect daily generation cap.
-		$daily_key   = 'psa_daily_gen_' . gmdate( 'Y-m-d' );
-		$daily_count = (int) get_transient( $daily_key );
-		if ( $daily_count >= PSA_Config::DAILY_GENERATION_CAP ) {
-			wp_send_json_success(
-				array(
-					'status'    => 'cap_reached',
-					'message'   => sprintf(
-						'Daily generation cap reached (%d/%d). Try again tomorrow.',
-						$daily_count,
-						PSA_Config::DAILY_GENERATION_CAP
-					),
-					'remaining' => count( self::get_unenriched_ids() ),
-				)
-			);
-		}
+		// Admin-initiated batch enrichment intentionally bypasses the daily cap.
+		// The cap exists to prevent runaway cron-based costs; AJAX enrichment is
+		// explicit, authenticated, rate-limited by the 2-second JS polling interval,
+		// and still respects the monthly budget check inside generate_peptide_content().
 
 		$ids = self::get_unenriched_ids();
 		if ( empty( $ids ) ) {
@@ -116,10 +104,6 @@ class PSA_Batch_Enrichment {
 
 		// Call the generator directly (synchronous — no cron dependency).
 		PSA_AI_Generator::background_generate( $post_id, $peptide_name );
-
-		// Bump daily counter.
-		$daily_count = (int) get_transient( $daily_key );
-		set_transient( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
 
 		// Check outcome: did generation succeed?
 		$error = get_post_meta( $post_id, 'psa_generation_error', true );
