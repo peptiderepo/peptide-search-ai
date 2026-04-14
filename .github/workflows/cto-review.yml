@@ -224,25 +224,22 @@ jobs:
           PY
 
       - name: Post PR review
+        # Always posts as COMMENT — not APPROVE/REQUEST_CHANGES — because the default
+        # GITHUB_TOKEN is not permitted to formally approve PRs without toggling a
+        # repo setting. The verdict is still prominent in the first line of the body
+        # ("## CTO Review — APPROVE|REQUEST_CHANGES|COMMENT"). Human merges, so the
+        # GitHub-native review state isn't load-bearing.
         if: steps.claude.outputs.skipped != '1'
         uses: actions/github-script@v7
-        env:
-          VERDICT: ${{ steps.claude.outputs.verdict }}
         with:
           script: |
             const fs = require('fs');
             const body = fs.readFileSync('/tmp/review-body.md', 'utf8');
-            const verdict = process.env.VERDICT;
-            const eventMap = {
-              'APPROVE': 'APPROVE',
-              'REQUEST_CHANGES': 'REQUEST_CHANGES',
-              'COMMENT': 'COMMENT'
-            };
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.issue.number,
-              event: eventMap[verdict] || 'COMMENT',
+              event: 'COMMENT',
               body,
             });
 
