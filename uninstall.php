@@ -42,6 +42,7 @@ if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
 // 3. Delete plugin options.
 delete_option( 'psa_settings' );
 delete_option( 'psa_search_cache_gen' );
+delete_option( 'psa_db_version' );
 
 // 4. Delete all plugin transients (validation cache, rate limits).
 $wpdb->query(

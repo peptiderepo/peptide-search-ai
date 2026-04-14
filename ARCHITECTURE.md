@@ -356,6 +356,22 @@ $psa_settings = array(
 );
 ```
 
+### Schema versioning & automatic upgrades
+
+The plugin stores the schema version it last migrated to in a separate option, `psa_db_version`. This is distinct from `PSA_VERSION` (the running code's semver), and lets the plugin detect whether the database needs to catch up after an in-place file update.
+
+- **Option name:** `PSA_Upgrade::OPTION_NAME` (`psa_db_version`), string, semver.
+- **Default:** `PSA_Upgrade::DEFAULT_STORED_VERSION` (`'0.0.0'`) when the option has never been written — strictly less than any released version so fresh installs always trigger the upgrade path.
+- **Driver:** `PSA_Upgrade::maybe_run()` in `includes/class-psa-upgrade.php`, called on every `admin_init` from `psa_admin_init()`. The method:
+  1. Reads `psa_db_version`.
+  2. Calls the pure helper `PSA_Upgrade::is_needed( $stored, PSA_VERSION )`, a thin wrapper over `version_compare` (stored < current → upgrade).
+  3. If an upgrade is needed, re-runs `PSA_Cost_Tracker::create_table()` so `dbDelta` picks up any additive schema changes (new columns, new indexes).
+  4. Writes `update_option( 'psa_db_version', PSA_VERSION, false )` so the upgrade doesn't re-run on the next request.
+- **Why on `admin_init`:** dbDelta is safe-to-repeat but not free. Running it once when an admin visits after an update — rather than on every frontend page load — keeps the cost near zero without requiring users to deactivate/reactivate the plugin.
+- **Downgrade / rollback:** if the running code is older than `psa_db_version` (e.g., deploy rolled back), `is_needed()` returns false and the driver is a no-op. The newer schema is left intact; old code continues to work against it as long as changes are additive.
+- **Cleanup:** `uninstall.php` deletes `psa_db_version` alongside the other plugin options.
+- **Testability:** `PSA_Upgrade::is_needed()` is a pure static method (no WordPress API calls) and is covered by `tests/unit/UpgradeTest.php` across fresh-install, same-version, future-version, and older-version scenarios, plus constant-stability checks on `OPTION_NAME` and `DEFAULT_STORED_VERSION`.
+
 ## Frontend Architecture
 
 ### JavaScript (jQuery-based)

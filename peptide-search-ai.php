@@ -33,6 +33,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-batch-enrichment.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-template.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-directory.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-upgrade.php';
 
 function psa_init() {
 	PSA_Post_Type::register_peptide_post_type();
@@ -48,32 +49,9 @@ add_action( 'init', 'psa_init' );
 
 function psa_admin_init() {
 	PSA_Post_Type::init_admin();
-	psa_maybe_run_upgrades();
+	PSA_Upgrade::maybe_run();
 }
 add_action( 'admin_init', 'psa_admin_init' );
-
-/**
- * Run database upgrades when the installed code version is newer than the
- * stored `psa_db_version` option. Keeps users from needing to
- * deactivate/reactivate the plugin after a schema change.
- *
- * Triggered on admin_init so dbDelta runs once per upgrade, not on every
- * frontend page load.
- *
- * @return void
- */
-function psa_maybe_run_upgrades() {
-	$stored = get_option( 'psa_db_version', '0.0.0' );
-	if ( version_compare( $stored, PSA_VERSION, '>=' ) ) {
-		return;
-	}
-
-	// Re-run CREATE TABLE via dbDelta — additive schema changes (new columns)
-	// will be applied automatically.
-	PSA_Cost_Tracker::create_table();
-
-	update_option( 'psa_db_version', PSA_VERSION, false );
-}
 
 /**
  * Check if current page is the Echo KB main page.
