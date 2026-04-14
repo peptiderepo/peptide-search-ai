@@ -321,6 +321,27 @@ Migration for existing peptides via admin "Migrate Existing Peptides to Categori
 | `psa_directory_card_extras` | Filter | Allows adding HTML to directory cards (e.g., observation count badge). |
 | `psa_rest_compound_data` | Filter | Allows enriching REST compound data before response. Receives `$data`, `$post_id`. |
 
+### API Logs Table (`wp_psa_api_logs`)
+
+Custom table created via `dbDelta` on plugin activation. Tracks every OpenRouter API call for cost monitoring and budget enforcement.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | BIGINT AUTO_INCREMENT | Primary key |
+| `created_at` | DATETIME | Timestamp of API call |
+| `provider` | VARCHAR(50) | API provider (default: `openrouter`) |
+| `model` | VARCHAR(100) | Model identifier (e.g., `deepseek/deepseek-v3.2`) |
+| `prompt_tokens` | INT | Tokens in prompt (measured or estimated) |
+| `completion_tokens` | INT | Tokens in completion (measured or estimated) |
+| `total_tokens` | INT | Sum of prompt + completion tokens |
+| `estimated_cost_usd` | DECIMAL(10,6) | Estimated cost in USD |
+| `request_type` | VARCHAR(20) | `validation` or `generation` |
+| `peptide_name` | VARCHAR(200) | Peptide being processed |
+| `success` | TINYINT(1) | Whether the API call succeeded |
+| `token_source` | VARCHAR(20) | `api` (measured from response), `estimated` (character-based fallback), or `none` (v4.4.3) |
+
+**Why `token_source`:** Some OpenRouter models (notably DeepSeek) omit the `usage` object from API responses. When this happens, `PSA_OpenRouter` estimates tokens from character length (~3.75 chars/token). The `token_source` column lets the admin UI clearly distinguish measured vs. estimated data.
+
 ### Options (Plugin Settings)
 
 Stored in `wp_options` table:

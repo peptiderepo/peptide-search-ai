@@ -39,6 +39,7 @@ class PSA_Cost_Tracker {
 			request_type VARCHAR(20) NOT NULL,
 			peptide_name VARCHAR(200) DEFAULT '',
 			success TINYINT(1) NOT NULL DEFAULT 1,
+			token_source VARCHAR(20) NOT NULL DEFAULT 'api',
 			INDEX idx_created_at (created_at),
 			INDEX idx_request_type (request_type)
 		) $charset_collate;";
@@ -66,6 +67,7 @@ class PSA_Cost_Tracker {
 	 *     @type string   $peptide_name         Name of peptide being processed
 	 *     @type bool     $success              Whether API call succeeded
 	 *     @type float    $estimated_cost_usd   Cost (or 0 to auto-calculate)
+	 *     @type string   $token_source         'api' (from usage response), 'estimated' (character-based), or 'none'
 	 * }
 	 * @return int|false Insert ID or false on error.
 	 */
@@ -84,13 +86,14 @@ class PSA_Cost_Tracker {
 		$peptide_name  = $data['peptide_name'] ?? '';
 		$success       = ! empty( $data['success'] ) ? 1 : 0;
 		$estimated_cost = floatval( $data['estimated_cost_usd'] ?? 0 );
+		$token_source   = $data['token_source'] ?? 'api';
 
 		// Auto-sum tokens if not provided.
 		if ( 0 === $total_tokens && ( $prompt_tokens > 0 || $completion_tokens > 0 ) ) {
 			$total_tokens = $prompt_tokens + $completion_tokens;
 		}
 
-		// Auto-calculate cost if not provided.
+		// Auto-calculate cost if not provided and we have token data.
 		if ( 0 === $estimated_cost && $prompt_tokens > 0 ) {
 			$estimated_cost = self::estimate_cost( $model, $prompt_tokens, $completion_tokens );
 		}
@@ -105,9 +108,10 @@ class PSA_Cost_Tracker {
 			'request_type'       => sanitize_text_field( $request_type ),
 			'peptide_name'       => sanitize_text_field( $peptide_name ),
 			'success'            => $success,
+			'token_source'       => sanitize_text_field( $token_source ),
 		);
 
-		$insert_format = array( '%s', '%s', '%d', '%d', '%d', '%f', '%s', '%s', '%d' );
+		$insert_format = array( '%s', '%s', '%d', '%d', '%d', '%f', '%s', '%s', '%d', '%s' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$result = $wpdb->insert( $table_name, $insert_data, $insert_format );
@@ -199,6 +203,45 @@ class PSA_Cost_Tracker {
 	}
 
 	/**
+	 * Count how many API calls this month used character-based token estimates.
+	 *
+	 * Why: Lets the admin UI flag when reported costs include approximations
+	 * so operators can distinguish measured spend from estimated spend.
+	 *
+	 * @param int|null $year  Year (defaults to current year).
+	 * @param int|null $month Month (defaults to current month).
+	 * @return int Number of estimated rows this month.
+	 */
+	public static function get_monthly_estimated_count( ?int $year = null, ?int $month = null ): int {
+		global $wpdb;
+
+		if ( null === $year ) {
+			$year = (int) gmdate( 'Y' );
+		}
+		if ( null === $month ) {
+			$month = (int) gmdate( 'm' );
+		}
+
+		$table_name = $wpdb->prefix . 'psa_api_logs';
+		$month      = max( 1, min( 12, (int) $month ) );
+
+		$start_date = gmdate( 'Y-m-01', mktime( 0, 0, 0, $month, 1, $year ) );
+		$end_date   = gmdate( 'Y-m-t', mktime( 0, 0, 0, $month, 1, $year ) ) . ' 23:59:59';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM ' . $table_name . ' WHERE created_at >= %s AND created_at <= %s AND token_source = %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table name is safe, built from $wpdb->prefix.
+				$start_date,
+				$end_date,
+				'estimated'
+			)
+		);
+
+		return (int) $result;
+	}
+
+	/**
 	 * Check if current month's budget has been exceeded.
 	 * Budget of 0 means unlimited.
 	 *
@@ -251,9 +294,16 @@ class PSA_Cost_Tracker {
 	 */
 	public static function estimate_cost( string $model, int $prompt_tokens, int $completion_tokens ): float {
 		// Known model pricing per 1 million tokens (input, output).
+		// Why: OpenRouter pricing varies by model; we maintain known rates here and
+		// fall back to a conservative default for unlisted models so cost tracking
+		// always produces a usable upper-bound estimate.
 		$pricing = array(
-			'google/gemini-2.5-flash'      => array( 0.15, 0.60 ),
-			'google/gemini-2.0-flash-001'  => array( 0.10, 0.40 ),
+			'google/gemini-2.5-flash'         => array( 0.15, 0.60 ),
+			'google/gemini-2.0-flash-001'     => array( 0.10, 0.40 ),
+			'deepseek/deepseek-v3.2'          => array( 0.27, 1.10 ),
+			'deepseek/deepseek-chat'          => array( 0.27, 1.10 ),
+			'deepseek/deepseek-r1'            => array( 0.55, 2.19 ),
+			'qwen/qwen3.6-plus:free'          => array( 0.00, 0.00 ),
 		);
 
 		$model = sanitize_text_field( $model );

@@ -482,6 +482,7 @@ class PSA_Admin {
 	private static function render_usage_summary(): void {
 		$current_spend  = PSA_Cost_Tracker::get_monthly_spend();
 		$current_tokens = PSA_Cost_Tracker::get_monthly_tokens();
+		$estimated_count = PSA_Cost_Tracker::get_monthly_estimated_count();
 		$budget         = floatval( self::get_setting( 'monthly_budget', PSA_Config::DEFAULT_MONTHLY_BUDGET ) );
 		$budget_remaining = ( 0.0 === $budget ) ? __( 'Unlimited', 'peptide-search-ai' ) : '$' . number_format( max( 0, $budget - $current_spend ), 2 );
 		$recent_logs    = PSA_Cost_Tracker::get_recent_logs( 20 );
@@ -490,7 +491,11 @@ class PSA_Admin {
 		<div style="background:#f5f5f5;padding:15px;border-radius:4px;margin-bottom:20px;">
 			<h3><?php esc_html_e( 'This Month', 'peptide-search-ai' ); ?></h3>
 			<p>
-				<strong><?php esc_html_e( 'Spend:', 'peptide-search-ai' ); ?></strong> $<?php echo esc_html( number_format( $current_spend, 2 ) ); ?><br />
+				<strong><?php esc_html_e( 'Spend:', 'peptide-search-ai' ); ?></strong> $<?php echo esc_html( number_format( $current_spend, 2 ) ); ?>
+				<?php if ( $estimated_count > 0 ) : ?>
+					<span style="color:#b45309;font-size:12px;" title="<?php echo esc_attr( $estimated_count ); ?> API calls used character-based token estimates because the model did not report usage data">&#9888; includes estimates</span>
+				<?php endif; ?>
+				<br />
 				<strong><?php esc_html_e( 'Tokens:', 'peptide-search-ai' ); ?></strong> <?php echo esc_html( number_format( $current_tokens ) ); ?><br />
 				<strong><?php esc_html_e( 'Budget Remaining:', 'peptide-search-ai' ); ?></strong> <?php echo esc_html( $budget_remaining ); ?>
 			</p>
@@ -512,11 +517,24 @@ class PSA_Admin {
 				</thead>
 				<tbody>
 					<?php foreach ( $recent_logs as $log ) : ?>
-						<tr>
+						<?php $is_estimated = ( isset( $log->token_source ) && 'estimated' === $log->token_source ); ?>
+						<tr<?php echo $is_estimated ? ' style="color:#92400e;"' : ''; ?>>
 							<td><?php echo esc_html( $log->created_at ); ?></td>
 							<td><code><?php echo esc_html( $log->model ); ?></code></td>
-							<td><?php echo esc_html( number_format( $log->total_tokens ) ); ?></td>
-							<td>$<?php echo esc_html( number_format( $log->estimated_cost_usd, 4 ) ); ?></td>
+							<td>
+								<?php if ( $is_estimated ) : ?>
+									<span title="Estimated from character length — model did not report token usage">~<?php echo esc_html( number_format( $log->total_tokens ) ); ?></span>
+								<?php else : ?>
+									<?php echo esc_html( number_format( $log->total_tokens ) ); ?>
+								<?php endif; ?>
+							</td>
+							<td>
+								<?php if ( $is_estimated ) : ?>
+									<span title="Cost estimated from approximate token count">~$<?php echo esc_html( number_format( $log->estimated_cost_usd, 4 ) ); ?></span>
+								<?php else : ?>
+									$<?php echo esc_html( number_format( $log->estimated_cost_usd, 4 ) ); ?>
+								<?php endif; ?>
+							</td>
 							<td><?php echo esc_html( $log->request_type ); ?></td>
 							<td><?php echo esc_html( $log->peptide_name ); ?></td>
 							<td><?php echo ( 1 === (int) $log->success ) ? '&#10003;' : '&#10007;'; ?></td>

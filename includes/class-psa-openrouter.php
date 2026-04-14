@@ -147,8 +147,28 @@ class PSA_OpenRouter {
 		}
 
 		// Log API call with token usage.
-		$prompt_tokens = (int) ( $body['usage']['prompt_tokens'] ?? 0 );
+		$response_text   = $body['choices'][0]['message']['content'];
+		$prompt_tokens   = (int) ( $body['usage']['prompt_tokens'] ?? 0 );
 		$completion_tokens = (int) ( $body['usage']['completion_tokens'] ?? 0 );
+		$token_source    = 'api';
+
+		// Diagnostic: log the raw usage structure once per model so we can verify
+		// whether the provider returns token counts. Remove after confirming.
+		if ( 0 === $prompt_tokens ) {
+			$usage_raw = isset( $body['usage'] ) ? wp_json_encode( $body['usage'] ) : 'missing';
+			error_log( 'PSA: OpenRouter usage field for model ' . $model . ': ' . substr( $usage_raw, 0, 300 ) );
+		}
+
+		// Fallback: estimate tokens from character length when the API reports zero.
+		// Why: Some OpenRouter models (e.g. deepseek) omit the usage object entirely.
+		// Approximation: ~3.75 characters per token for English scientific text.
+		if ( 0 === $prompt_tokens && 0 === $completion_tokens ) {
+			$prompt_tokens     = (int) ceil( strlen( $prompt ) / 3.75 );
+			$completion_tokens = (int) ceil( strlen( $response_text ) / 3.75 );
+			$token_source      = 'estimated';
+
+			error_log( 'PSA: Token usage estimated from character length for ' . $peptide_name . ': prompt=' . $prompt_tokens . ', completion=' . $completion_tokens );
+		}
 
 		PSA_Cost_Tracker::log_api_call(
 			array(
@@ -159,10 +179,11 @@ class PSA_OpenRouter {
 				'request_type'        => $request_type,
 				'peptide_name'        => $peptide_name,
 				'success'             => true,
+				'token_source'        => $token_source,
 			)
 		);
 
-		return $body['choices'][0]['message']['content'];
+		return $response_text;
 	}
 
 	/**

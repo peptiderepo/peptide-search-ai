@@ -5,6 +5,22 @@ All notable changes to the Peptide Search AI plugin will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.3] - 2026-04-14
+
+### Fixed
+- **Cost tracker $0.00 bug**: DeepSeek models on OpenRouter omit the `usage` object from API responses, causing all token counts and costs to log as zero. Added character-based token estimation fallback (~3.75 chars/token for scientific English) so spend is always tracked.
+
+### Added
+- `token_source` column in `psa_api_logs` table distinguishing measured (`api`) vs. estimated (`estimated`) token counts. Migrated via `dbDelta` on plugin activation.
+- DeepSeek and Qwen model pricing in `PSA_Cost_Tracker::estimate_cost()`: `deepseek/deepseek-v3.2`, `deepseek/deepseek-chat`, `deepseek/deepseek-r1`, `qwen/qwen3.6-plus:free`.
+- `PSA_Cost_Tracker::get_monthly_estimated_count()` method for querying how many API calls used estimates in a given month.
+- Admin UI indicators for estimated data: amber warning icon on monthly summary ("includes estimates"), `~` prefix on estimated token/cost values in the log table, and tooltips explaining the estimation method.
+- Diagnostic logging of raw `usage` field from OpenRouter for models that report zero tokens (temporary — remove after confirming).
+
+### Changed
+- `PSA_OpenRouter::send_request_once()` now passes `token_source` to cost tracker alongside token counts.
+- Version bump to 4.4.3.
+
 ## [4.3.0] - Unreleased
 
 ### Added
