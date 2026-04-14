@@ -52,7 +52,7 @@ class PSA_Upgrade {
 	 * @param string $current_version Version string of the running code.
 	 * @return bool True if an upgrade must run; false otherwise.
 	 */
-	public static function is_needed( $stored_version, $current_version ) {
+	public static function is_needed( string $stored_version, string $current_version ): bool {
 		return version_compare( $stored_version, $current_version, '<' );
 	}
 
@@ -66,7 +66,7 @@ class PSA_Upgrade {
 	 *
 	 * @return void
 	 */
-	public static function maybe_run() {
+	public static function maybe_run(): void {
 		$stored = get_option( self::OPTION_NAME, self::DEFAULT_STORED_VERSION );
 		if ( ! self::is_needed( $stored, PSA_VERSION ) ) {
 			return;
