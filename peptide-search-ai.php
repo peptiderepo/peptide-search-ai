@@ -53,6 +53,19 @@ function psa_admin_init() {
 add_action( 'admin_init', 'psa_admin_init' );
 
 /**
+ * Decide whether a schema upgrade is needed given a stored version and the
+ * currently-installed code version. Pure function — no side effects, testable
+ * in isolation.
+ *
+ * @param string $stored_version  Version string recorded in psa_db_version.
+ * @param string $current_version Version string of the running code.
+ * @return bool True if an upgrade must run; false otherwise.
+ */
+function psa_upgrade_needed( $stored_version, $current_version ) {
+	return version_compare( $stored_version, $current_version, '<' );
+}
+
+/**
  * Run database upgrades when the installed code version is newer than the
  * stored `psa_db_version` option. Keeps users from needing to
  * deactivate/reactivate the plugin after a schema change.
@@ -60,11 +73,14 @@ add_action( 'admin_init', 'psa_admin_init' );
  * Triggered on admin_init so dbDelta runs once per upgrade, not on every
  * frontend page load.
  *
+ * Side effects: reads psa_db_version option; on upgrade, calls
+ * PSA_Cost_Tracker::create_table() and writes psa_db_version.
+ *
  * @return void
  */
 function psa_maybe_run_upgrades() {
 	$stored = get_option( 'psa_db_version', '0.0.0' );
-	if ( version_compare( $stored, PSA_VERSION, '>=' ) ) {
+	if ( ! psa_upgrade_needed( $stored, PSA_VERSION ) ) {
 		return;
 	}
 
