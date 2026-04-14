@@ -21,7 +21,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  actions: write   # needed to update repo variables for the spend counter
 
 concurrency:
   group: cto-review-pr-${{ github.event.pull_request.number }}
@@ -37,10 +36,22 @@ jobs:
     timeout-minutes: 12
     steps:
       - name: Monthly spend cap — read counter, bail if exceeded
+        # Counter lives in Repository Variables (CTO_REVIEW_MONTH,
+        # CTO_REVIEW_SPEND_CENTS, CTO_REVIEW_CAP_CENTS). Auth via CTO_ADMIN_TOKEN
+        # (a PAT) because default GITHUB_TOKEN cannot mutate Repo Variables.
         id: budget
         uses: actions/github-script@v7
+        env:
+          ADMIN_TOKEN: ${{ secrets.CTO_ADMIN_TOKEN }}
         with:
+          github-token: ${{ secrets.CTO_ADMIN_TOKEN }}
           script: |
+            if (!process.env.ADMIN_TOKEN) {
+              core.warning('CTO_ADMIN_TOKEN not set — skipping budget cap (reviewer will still run but spend is untracked).');
+              core.setOutput('skip', 'false');
+              core.setOutput('tracking', 'false');
+              return;
+            }
             const month = new Date().toISOString().slice(0,7);
             const get = async (name) => {
               try {
@@ -76,22 +87,22 @@ jobs:
             core.setOutput('month', month);
             core.setOutput('spend_cents', String(spendCents));
             core.setOutput('cap_cents', String(capCents));
+            core.setOutput('tracking', 'true');
+
             if (spendCents >= capCents) {
               const body = [
                 `## CTO Review — Skipped (monthly cap hit)`,
                 ``,
                 `The reviewer's monthly spend has reached **\$${(spendCents/100).toFixed(2)}** of its **\$${(capCents/100).toFixed(2)}** cap for ${month}.`,
                 ``,
-                `To unblock: wait for month rollover, raise \`CTO_REVIEW_CAP_CENTS\` in repo settings, or reset \`CTO_REVIEW_SPEND_CENTS\` to 0.`,
-                ``,
-                `_Auto-paused by \`.github/workflows/cto-review.yml\`._`,
+                `To unblock: wait for the cap to reset on the 1st of next month; raise \`CTO_REVIEW_CAP_CENTS\` in Settings → Variables; or reset \`CTO_REVIEW_SPEND_CENTS\` to 0.`,
               ].join('\n');
               await github.rest.pulls.createReview({
                 owner: context.repo.owner, repo: context.repo.repo,
                 pull_number: context.issue.number, event: 'COMMENT', body,
               });
               core.setOutput('skip', 'true');
-              core.notice(`Reviewer paused: $${(spendCents/100).toFixed(2)} >= cap $${(capCents/100).toFixed(2)}`);
+              core.notice(`Paused: $${(spendCents/100).toFixed(2)} >= cap $${(capCents/100).toFixed(2)}`);
             } else {
               core.setOutput('skip', 'false');
             }
@@ -358,20 +369,27 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"added_cents={int(round(total_cents))}\n")
               f.write(f"skipped=0\n")
+              f.write(f"primary_verdict={heading_verdict}\n")
           PY
 
-      - name: Post PR review
+      - name: Post PR review (formal APPROVE / REQUEST_CHANGES / COMMENT)
+        # Uses primary model's verdict as the formal event. Falls back to COMMENT
+        # if the primary model failed or returned something unexpected.
         if: steps.budget.outputs.skip != 'true' && steps.review.outputs.skipped != '1'
         uses: actions/github-script@v7
+        env:
+          PRIMARY_VERDICT: ${{ steps.review.outputs.primary_verdict }}
         with:
           script: |
             const fs = require('fs');
             const body = fs.readFileSync('/tmp/review-body.md', 'utf8');
+            const v = process.env.PRIMARY_VERDICT || 'COMMENT';
+            const eventMap = { APPROVE: 'APPROVE', REQUEST_CHANGES: 'REQUEST_CHANGES', COMMENT: 'COMMENT' };
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.issue.number,
-              event: 'COMMENT',
+              event: eventMap[v] || 'COMMENT',
               body,
             });
 
@@ -390,18 +408,21 @@ jobs:
             });
 
       - name: Update monthly spend counter
-        if: steps.budget.outputs.skip != 'true' && always()
+        if: steps.budget.outputs.skip != 'true' && steps.budget.outputs.tracking == 'true'
         uses: actions/github-script@v7
         env:
           PRIOR: ${{ steps.budget.outputs.spend_cents }}
           ADDED: ${{ steps.review.outputs.added_cents }}
+          CAP: ${{ steps.budget.outputs.cap_cents }}
         with:
+          github-token: ${{ secrets.CTO_ADMIN_TOKEN }}
           script: |
             const prior = parseInt(process.env.PRIOR || '0', 10);
             const added = parseInt(process.env.ADDED || '0', 10);
+            const cap = parseInt(process.env.CAP || '1000', 10);
             const total = prior + added;
             await github.rest.actions.updateRepoVariable({
               owner: context.repo.owner, repo: context.repo.repo,
               name: 'CTO_REVIEW_SPEND_CENTS', value: String(total),
             });
-            core.notice(`Spend this month: $${(total/100).toFixed(2)} (added $${(added/100).toFixed(2)})`);
+            core.notice(`Budget: $${(total/100).toFixed(2)} / $${(cap/100).toFixed(2)} this month (added $${(added/100).toFixed(2)})`);
