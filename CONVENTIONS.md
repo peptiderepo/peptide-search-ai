@@ -705,3 +705,49 @@ wp_send_json_success(
 | **Line Length** | <120 chars | Configure in `.phpcs.xml.dist` |
 | **Escaping** | `esc_*()` always | `esc_html()`, `esc_attr()`, `wp_kses_post()` |
 | **Sanitizing** | `sanitize_*()` always | `sanitize_text_field()`, `wp_unslash()` |
+
+## Git Workflow — PR-Gated, Soft-Enforced
+
+This repo is private on GitHub's free plan, which does not support branch protection or rulesets. The review gate is enforced at the agent layer, not server-side. Every agent and human contributor follows these rules; the `.github/workflows/main-push-audit.yml` tripwire opens an audit issue on any direct push to `main` that did not come from a merged PR.
+
+### Rules
+
+1. **Never push to `main` directly.** Every change lands via a pull request that the maintainer merges. No self-merging. No force-pushing to `main`.
+
+2. **Branch naming**: `claude/<scope>-<YYYYMMDD>` for agent-authored work, `fix/<scope>` or `feat/<scope>` for human-authored. The scope is a 1–3 word kebab-case description.
+
+3. **Commit trailer**: every commit authored by an agent must end with an `Agent-Session:` trailer so commits can be correlated back to the conversation that produced them, even though all commits share the `peptiderepo` bot identity.
+
+   ```
+   feat: add per-request cost tracking
+
+   Agent-Session: cowork-2026-04-14-cost-audit
+   ```
+
+4. **PR description template**: every PR description covers
+   - **What changed** (one paragraph)
+   - **Why** (motivation or incident link)
+   - **Risk flags** (schema changes, API contract changes, cost impact, compatibility)
+   - **Test plan** (what was run locally, what to smoke-test after merge)
+
+5. **Emergency push exception**: if a situation genuinely requires pushing to `main` without a PR (site down, CI broken, one-line hotfix), surface it in the chat before doing it. Every emergency push gets a follow-up PR that commits the same changes through the normal flow so git stays the source of truth. The tripwire will open an audit issue — close it with a comment explaining why.
+
+### Opening a PR from an agent session
+
+The `gh` CLI is not installed in the Cowork sandbox. Use `curl` with the PAT from the workspace `.env.credentials`:
+
+```bash
+GH_TOKEN=$(grep "^GITHUB_PAT=" "$WORKSPACE/.env.credentials" | cut -d= -f2)
+
+git push -u origin HEAD
+
+curl -s -X POST -H "Authorization: token $GH_TOKEN" \
+  -H "Content-Type: application/json" \
+  "https://api.github.com/repos/peptiderepo/<repo>/pulls" \
+  -d "$(jq -cn --arg title "<title>" --arg head "<branch>" --arg body "<body>" \
+      '{title:$title, head:$head, base:"main", body:$body}')"
+```
+
+### When this changes
+
+If the peptiderepo GitHub account is ever upgraded to Pro (or the repo goes public), replace this soft-enforcement section with a note pointing to the real branch protection rules in repo settings.
