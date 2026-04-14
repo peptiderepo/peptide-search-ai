@@ -13,6 +13,14 @@ declare( strict_types=1 );
 use PHPUnit\Framework\TestCase;
 
 // Stub WP hook registrars so requiring the plugin file does not explode.
+// The plugin bootstraps itself with add_action() / register_*_hook() calls at
+// top level; these must be no-ops in the test context.
+if ( ! function_exists( 'add_action' ) ) {
+	function add_action() {}
+}
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter() {}
+}
 if ( ! function_exists( 'add_shortcode' ) ) {
 	function add_shortcode() {}
 }
