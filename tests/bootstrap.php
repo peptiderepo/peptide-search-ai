@@ -130,3 +130,4 @@ require_once ABSPATH . 'includes/class-psa-cost-tracker.php';
 require_once ABSPATH . 'includes/class-psa-openrouter.php';
 require_once ABSPATH . 'includes/class-psa-kb-builder.php';
 require_once ABSPATH . 'includes/class-psa-ai-generator.php';
+require_once ABSPATH . 'includes/class-psa-upgrade.php';

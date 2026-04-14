@@ -1,9 +1,10 @@
 <?php
 /**
- * Tests for the schema-upgrade decision logic in peptide-search-ai.php.
+ * Tests for the schema-upgrade decision logic in PSA_Upgrade.
  *
- * Covers psa_upgrade_needed() across the three version-comparison
- * scenarios: fresh install, already-upgraded, and future-version.
+ * Covers PSA_Upgrade::is_needed() across the four version-comparison
+ * scenarios: fresh install, already-upgraded, future-version (downgrade),
+ * and older stored version.
  *
  * @package PeptideSearchAI
  */
@@ -12,37 +13,14 @@ declare( strict_types=1 );
 
 use PHPUnit\Framework\TestCase;
 
-// Stub WP hook registrars so requiring the plugin file does not explode.
-// The plugin bootstraps itself with add_action() / register_*_hook() calls at
-// top level; these must be no-ops in the test context.
-if ( ! function_exists( 'add_action' ) ) {
-	function add_action() {}
-}
-if ( ! function_exists( 'add_filter' ) ) {
-	function add_filter() {}
-}
-if ( ! function_exists( 'add_shortcode' ) ) {
-	function add_shortcode() {}
-}
-if ( ! function_exists( 'register_activation_hook' ) ) {
-	function register_activation_hook() {}
-}
-if ( ! function_exists( 'register_deactivation_hook' ) ) {
-	function register_deactivation_hook() {}
-}
-
-// Load the plugin file once so the pure helper becomes available. The
-// plugin's top-level side effects are limited to hook registrations, which
-// are neutralized by the stubs above and the ones in bootstrap.php.
-if ( ! function_exists( 'psa_upgrade_needed' ) ) {
-	require_once ABSPATH . 'peptide-search-ai.php';
-}
+// PSA_Upgrade is already loaded by tests/bootstrap.php via class-psa-upgrade.php.
+// No plugin-file bootstrap needed — the decision helper is a pure function.
 
 /**
- * Test case for psa_upgrade_needed().
+ * Test case for PSA_Upgrade::is_needed().
  *
- * psa_upgrade_needed() is a pure function — no side effects, no WordPress
- * API calls — so it can be exercised directly without a live option store.
+ * The helper is a pure static method (no WordPress API calls, no side
+ * effects), so it can be exercised directly without a live option store.
  */
 class UpgradeTest extends TestCase {
 
@@ -52,7 +30,7 @@ class UpgradeTest extends TestCase {
 	 */
 	public function test_fresh_install_triggers_upgrade(): void {
 		$this->assertTrue(
-			psa_upgrade_needed( '0.0.0', '4.4.3' ),
+			PSA_Upgrade::is_needed( '0.0.0', '4.4.3' ),
 			'Fresh install (stored = 0.0.0) must trigger an upgrade against any released version.'
 		);
 	}
@@ -62,7 +40,7 @@ class UpgradeTest extends TestCase {
 	 */
 	public function test_same_version_skips_upgrade(): void {
 		$this->assertFalse(
-			psa_upgrade_needed( '4.4.3', '4.4.3' ),
+			PSA_Upgrade::is_needed( '4.4.3', '4.4.3' ),
 			'Stored version equal to current version must not trigger an upgrade.'
 		);
 	}
@@ -74,7 +52,7 @@ class UpgradeTest extends TestCase {
 	 */
 	public function test_future_stored_version_skips_upgrade(): void {
 		$this->assertFalse(
-			psa_upgrade_needed( '5.0.0', '4.4.3' ),
+			PSA_Upgrade::is_needed( '5.0.0', '4.4.3' ),
 			'Stored version greater than current version must not trigger an upgrade.'
 		);
 	}
@@ -86,8 +64,24 @@ class UpgradeTest extends TestCase {
 	 */
 	public function test_older_stored_version_triggers_upgrade(): void {
 		$this->assertTrue(
-			psa_upgrade_needed( '4.4.2', '4.4.3' ),
+			PSA_Upgrade::is_needed( '4.4.2', '4.4.3' ),
 			'Stored version older than current version must trigger an upgrade.'
 		);
+	}
+
+	/**
+	 * Constants used by the driver should be stable across releases so
+	 * existing installs keep pointing at the same option key.
+	 */
+	public function test_option_name_constant_is_stable(): void {
+		$this->assertSame( 'psa_db_version', PSA_Upgrade::OPTION_NAME );
+	}
+
+	/**
+	 * Default stored version must be strictly less than any future release
+	 * so fresh-install detection keeps working.
+	 */
+	public function test_default_stored_version_is_zero(): void {
+		$this->assertSame( '0.0.0', PSA_Upgrade::DEFAULT_STORED_VERSION );
 	}
 }
