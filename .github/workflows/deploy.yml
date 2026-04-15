@@ -248,20 +248,25 @@ jobs:
         run: |
           echo "Verifying site is accessible after deploy..."
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://peptiderepo.com/")
-          if [ "$HTTP_STATUS" -eq 200 ]; then
-            echo "✓ Site returned HTTP $HTTP_STATUS"
+          # Accept 200 (healthy) or 403 (peptide-starter-theme v1.5.2 CF-peer
+          # validator rejecting this GHA-runner direct-to-origin request as
+          # non-Cloudflare traffic — that rejection is the validator working).
+          # Real user traffic via Cloudflare gets 200.
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 403 ]; then
+            echo "✓ Site responsive (HTTP $HTTP_STATUS)"
           else
-            echo "⚠ Site returned HTTP $HTTP_STATUS (expected 200)"
+            echo "⚠ Site returned unexpected HTTP $HTTP_STATUS"
             echo "The deploy completed but the site may need attention."
             exit 1
           fi
 
-          # Verify REST API endpoint is responding.
+          # Verify REST API endpoint is responding. Same 200/403 tolerance:
+          # the REST endpoint is also gated by the CF-peer validator.
           REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://peptiderepo.com/wp-json/peptides/v1/search?q=BPC-157")
-          if [ "$REST_STATUS" -eq 200 ]; then
-            echo "✓ REST API returned HTTP $REST_STATUS"
+          if [ "$REST_STATUS" -eq 200 ] || [ "$REST_STATUS" -eq 403 ]; then
+            echo "✓ REST API responsive (HTTP $REST_STATUS)"
           else
-            echo "⚠ REST API returned HTTP $REST_STATUS (expected 200)"
+            echo "⚠ REST API returned unexpected HTTP $REST_STATUS"
           fi
 
       - name: Deploy summary
