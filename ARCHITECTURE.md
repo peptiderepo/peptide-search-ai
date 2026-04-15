@@ -1,5 +1,7 @@
 # Peptide Search AI — Architecture
 
+> **Cross-app context:** decisions that affect multiple plugins (Cloudflare AI Gateway routing, OpenRouter account sharing, the interface pattern, image-generation stack, social distributor choice) are recorded in `Peptide Repo CTO/docs/engineering/decisions/`. The incident runbook for cross-app failure modes is at `Peptide Repo CTO/docs/engineering/INCIDENT-RUNBOOK.md`. Read both before making decisions that cross plugin boundaries.
+
 ## Overview
 
 Peptide Search AI is a WordPress plugin that transforms sites into intelligent, self-growing peptide databases. Visitors search for peptides using an AJAX search form—if a result exists, it displays instantly; if not, the plugin automatically validates the peptide name via lightweight AI, creates a placeholder post, and queues comprehensive content generation in the background via WP-Cron. The generated entry includes molecular data, mechanism of action, research applications, safety profiles, and PubChem cross-reference enrichment. All functionality is non-blocking, respects rate limits, and supports multiple search instances on a single page.
