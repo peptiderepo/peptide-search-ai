@@ -37,6 +37,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin-page.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-batch-enrichment.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-template.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-directory-api.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-directory.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-upgrade.php';
 
