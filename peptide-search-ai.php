@@ -28,6 +28,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-search.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-cost-tracker.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-openrouter.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-kb-builder.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-ai-content.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-ai-generator.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-pubchem.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin-page.php';
