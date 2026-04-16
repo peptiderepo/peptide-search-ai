@@ -26,6 +26,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type-meta.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search-handler.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-cost-reporter.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-cost-tracker.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-openrouter.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-kb-builder.php';
