@@ -30,6 +30,7 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-openrouter.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-kb-builder.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-ai-generator.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-pubchem.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin-page.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-admin.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-batch-enrichment.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-template.php';
