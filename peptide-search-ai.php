@@ -23,6 +23,7 @@ define( 'PSA_PLUGIN_FILE', __FILE__ );
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-config.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-encryption.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type-meta.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search-handler.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-cost-tracker.php';
