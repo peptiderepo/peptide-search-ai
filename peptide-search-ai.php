@@ -3,7 +3,7 @@
  * Plugin Name: Peptide Search AI
  * Plugin URI:  https://example.com/peptide-search-ai
  * Description: Searchable peptide database with AI-powered auto-population and browsable directory.
- * Version:     4.4.3
+ * Version:     4.5.0
  * Author:      Terence
  * License:     GPL v2 or later
  * Text Domain: peptide-search-ai
@@ -15,13 +15,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PSA_VERSION', '4.4.3' );
+define( 'PSA_VERSION', '4.5.0' );
 define( 'PSA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PSA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PSA_PLUGIN_FILE', __FILE__ );
 
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-config.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-encryption.php';
+require_once PSA_PLUGIN_DIR . 'includes/class-psa-dependency-check.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-post-type-meta.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-search-handler.php';
@@ -42,11 +43,20 @@ require_once PSA_PLUGIN_DIR . 'includes/class-psa-directory.php';
 require_once PSA_PLUGIN_DIR . 'includes/class-psa-upgrade.php';
 
 function psa_init() {
-	PSA_Post_Type::register_peptide_post_type();
-	PSA_Post_Type::register_taxonomy();
+	// Settings + dependency notice always boot so the admin can see plugin
+	// state and act on a missing PR Core dependency.
+	PSA_Admin::init();
+	PSA_Dependency_Check::init();
+
+	// PR Core >= 0.2.0 owns `peptide` CPT + `peptide_category` taxonomy as
+	// of v4.5.0. Gate CPT-dependent surfaces so PSA degrades gracefully
+	// instead of binding hooks against an unregistered post type.
+	if ( ! PSA_Dependency_Check::is_satisfied() ) {
+		return;
+	}
+
 	PSA_Search::init();
 	PSA_AI_Generator::init();
-	PSA_Admin::init();
 	PSA_Batch_Enrichment::init();
 	PSA_Template::init();
 	PSA_Directory::init();
@@ -54,8 +64,15 @@ function psa_init() {
 add_action( 'init', 'psa_init' );
 
 function psa_admin_init() {
-	PSA_Post_Type::init_admin();
 	PSA_Upgrade::maybe_run();
+
+	// Meta boxes + admin columns bind to the `peptide` CPT; only register
+	// when PR Core has provided it.
+	if ( ! PSA_Dependency_Check::is_satisfied() ) {
+		return;
+	}
+
+	PSA_Post_Type::init_admin();
 }
 add_action( 'admin_init', 'psa_admin_init' );
 
@@ -233,43 +250,8 @@ function psa_replace_kb_search() {
 add_action( 'wp_footer', 'psa_replace_kb_search' );
 
 function psa_activate() {
-	PSA_Post_Type::register_peptide_post_type();
-	PSA_Post_Type::register_taxonomy();
-	PSA_Post_Type::populate_default_categories();
-	PSA_Cost_Tracker::create_table();
-	flush_rewrite_rules();
-}
-register_activation_hook( __FILE__, 'psa_activate' );
-
-function psa_deactivate() {
-	flush_rewrite_rules();
-}
-register_deactivation_hook( __FILE__, 'psa_deactivate' );
-
-function psa_get_client_ip() {
-	$headers = array(
-		'HTTP_CF_CONNECTING_IP',
-		'REMOTE_ADDR',
-	);
-	foreach ( $headers as $header ) {
-		if ( ! empty( $_SERVER[ $header ] ) ) {
-			$ip = explode( ',', sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) ) );
-			$ip = trim( $ip[0] );
-			if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
-				return $ip;
-			}
-		}
-	}
-	return '0.0.0.0';
-}
-
-function psa_get_admin_user_id() {
-	$admins = get_users(
-		array(
-			'role'   => 'administrator',
-			'number' => 1,
-			'fields' => 'ID',
-		)
-	);
-	return ! empty( $admins ) ? (int) $admins[0] : 0;
-}
+	// As of PSA v4.5.0, PR Core (>= 0.2.0) owns the `peptide` CPT and
+	// `peptide_category` taxonomy — PSA no longer registers them here. The
+	// 8 default category terms were seeded on earlier PSA versions and
+	// remain in wp_term_taxonomy; PR Core inherits them by registering the
+	// same taxonomy name, so no re-seed is required. PSA only owns its 

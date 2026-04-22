@@ -5,6 +5,36 @@ All notable changes to the Peptide Search AI plugin will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.0] - 2026-04-22
+
+### Changed (BREAKING)
+- Dropped registration of the `peptide` custom post type and `peptide_category` taxonomy. These are now owned by Peptide Repo Core (PR Core) v0.2.0+, the canonical peptide data layer. Existing posts and term relationships are unaffected — they continue to work with PR Core's registration.
+- PSA now has a hard dependency on PR Core ≥ 0.2.0. An admin notice appears if the dependency is not met; PSA features that operate on the `peptide` CPT (meta boxes, admin columns, directory widget, KB renderer, search widget, single-peptide template) degrade gracefully until PR Core is updated.
+- `psa_activate()` no longer seeds default `peptide_category` terms — PR Core inherits the 8 existing terms via taxonomy-name keying in `wp_term_taxonomy`.
+- `uninstall.php` no longer deletes `peptide` posts or `peptide_category` terms. Those entities are owned by PR Core as of this release; removing them on PSA uninstall would break cross-plugin contracts. PSA uninstall now only removes PSA's own options, transients, and the `wp_psa_api_logs` table.
+
+### Added
+- `PSA_Dependency_Check` class (`includes/class-psa-dependency-check.php`): verifies `PR_CORE_VERSION >= 0.2.0`, renders an admin notice when unmet, and is used as a boot-path gate by CPT-dependent PSA classes.
+- PHPUnit coverage for `PSA_Dependency_Check::is_satisfied()` across undefined / 0.1.1 / 0.2.0 / 0.3.0 version scenarios plus a regression assertion that `PSA_Post_Type` no longer exposes `register_post_type` or `register_taxonomy` call paths.
+
+### Removed
+- `PSA_Post_Type::register_peptide_post_type()` method.
+- `PSA_Post_Type::register_taxonomy()` method.
+- `PSA_Post_Type::populate_default_categories()` method and its activation hook (seeding is a data-layer concern now owned by PR Core; the 8 existing terms remain in `wp_term_taxonomy`).
+- Note: the `PSA_Post_Type::DEFAULT_CATEGORIES` constant is **retained** — PSA still consumes it as a slug→name reference list in `PSA_AI_Content::assign_category_term()` and the admin "Migrate Existing Peptides to Categories" button. Its role changed from "seed list" to "consumer lookup"; the value is unchanged.
+
+### Unchanged
+- Meta boxes (`psa_peptide_data`, `psa_extended_data`) and all `psa_*` meta keys on peptide posts.
+- Directory shortcode `[peptide_directory]` and its `/wp-json/peptide-search-ai/v1/compounds` REST endpoint.
+- Single-peptide template (`PSA_Template`) and KB article renderer (`PSA_KB_Builder`).
+- Search widget, `/wp-json/peptides/v1/search` REST endpoint, and AJAX search handler.
+- Cost tracker, API logs table schema, and the `psa_db_version` option.
+
+### Migration notes
+- No data migration required. The existing `peptide` posts and all `peptide_category` term assignments remain intact and functional — PR Core registers the same post-type name (`peptide`) and taxonomy name (`peptide_category`), so `wp_posts.post_type` and `wp_term_taxonomy.taxonomy` continue to resolve.
+- After upgrading, ensure PR Core is at 0.2.0 or later — otherwise PSA surfaces an admin notice and degrades the peptide-dependent features until PR Core is updated.
+- Deploy order (coordinated release): PR Core v0.2.0 ships first and restores the peptide detail pages on its own (PSA v4.4.3's existing `post_type_exists( 'peptide' )` guard no-ops its registration once PR Core claims the CPT). PSA v4.5.0 ships second as cleanup — no user-visible change at that point.
+
 ## [4.4.3] - 2026-04-14
 
 ### Fixed
@@ -63,77 +93,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `PSA_AI_Generator` now delegates to `PSA_OpenRouter` and `PSA_KB_Builder` (reduced from 827 to ~470 lines).
 - Updated test suite to call `PSA_OpenRouter::parse_response()` instead of removed private method.
-- Updated `ARCHITECTURE.md` and `CONVENTIONS.md` to reflect new class structure.
-- Bumped minimum PHP recommendation to 7.4+ with strict type enforcement.
-
-### Removed
-- Deprecated `PSA_Error` class and `class-psa-error.php` (unused, no callers).
-
-## [4.1.0] - 2026-04-10
-
-### Added
-- AES-256-CBC encryption for API keys stored in the database (`PSA_Encryption` class).
-- Cost/token tracking with `wp_psa_api_logs` custom table (`PSA_Cost_Tracker` class).
-- Monthly budget system with hard-stop enforcement.
-- Dry-run mode for cost estimation before API calls.
-- Admin UI for API usage summary and recent call logs.
-- Monthly budget configuration field in settings.
-
-### Fixed
-- PHPCS `PreparedSQL` errors in cost tracker queries.
-
-## [4.0.0] - 2026-04-10
-
-### Security
-- **SEC-001 CRITICAL:** Removed spoofable `X-Forwarded-For` / `X-Real-IP` from IP detection; now trusts only `CF-Connecting-IP` + `REMOTE_ADDR`.
-- **SEC-004 HIGH:** Added peptide name input validation with character whitelist and prompt injection blocking.
-- **SEC-006 HIGH:** Added missing `return` after `wp_send_json_success` in pending retry max-retries block.
-- **SEC-007 MEDIUM:** KB articles now respect the `auto_publish` setting instead of always publishing.
-- **SEC-009 MEDIUM:** Replaced hardcoded page ID 73 with configurable `kb_page_id` setting.
-- **SEC-010 MEDIUM:** Fixed cache invalidation transient name pattern (added underscore prefix).
-- **SEC-011 MEDIUM:** Skipped `sleep()` during WP-Cron to avoid blocking PHP workers on rate limit retry.
-- **SEC-012 MEDIUM:** Added global daily generation cap (50/day) to prevent cost overruns.
-- **SEC-013 LOW:** Added `@deprecated` notice to unused `PSA_Error` class.
-
-### Added
-- PHPUnit test infrastructure with `bootstrap.php` and 20 unit tests across 2 test files.
-- `ARCHITECTURE.md` and `CONVENTIONS.md` documentation.
-
-### Fixed
-- JavaScript typos breaking form submit and network error handling.
-- CSS missing semicolons.
-- PHPCS compliance: short ternaries, array formatting, Yoda conditions, tab indentation.
-
-## [3.0.0] - 2026-04-09
-
-### Added
-- Dual-layer rate limiting (transient + object cache) for AJAX and REST endpoints.
-- Cache generation counter for O(1) cache invalidation instead of expensive DELETE queries.
-- PubChem data enrichment with molecular weight, formula, SMILES, and InChI.
-- Background generation via WP-Cron (non-blocking).
-- Retry logic with configurable max attempts for stale pending peptides.
-- REST API endpoint (`/wp-json/peptides/v1/search`) for headless access.
-- Multiple shortcode instances on the same page via `data-psa-instance` attribute.
-
-### Changed
-- Search results cached with generation counter for fast invalidation.
-- Batch post/meta priming to avoid N+1 queries in search results.
-
-## [2.0.0] - 2026-04-08
-
-### Added
-- AI-powered peptide name validation (lightweight model before full generation).
-- OpenRouter API integration for multi-model support.
-- Custom Post Type (`peptide`) with 15+ meta fields.
-- Admin settings page for API key, model selection, and behavior configuration.
-- Single peptide page template with quick-facts table and source badges.
-- Echo Knowledge Base article auto-creation from generated content.
-- CSS design system with `.psa-*` namespace and BEM-inspired structure.
-
-## [1.0.0] - 2026-04-07
-
-### Added
-- Initial release.
-- Basic peptide search shortcode.
-- AJAX-powered search with debounced input.
-- Responsive mobile layout (600px breakpoint).
+- Updated 
