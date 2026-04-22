@@ -254,4 +254,43 @@ function psa_activate() {
 	// `peptide_category` taxonomy — PSA no longer registers them here. The
 	// 8 default category terms were seeded on earlier PSA versions and
 	// remain in wp_term_taxonomy; PR Core inherits them by registering the
-	// same taxonomy name, so no re-seed is required. PSA only owns its 
+	// same taxonomy name, so no re-seed is required. PSA only owns its
+	// own cost-tracker table and still needs to flush rewrite rules on
+	// activation so the `peptide` CPT permalinks resolve on this install.
+	PSA_Cost_Tracker::create_table();
+	flush_rewrite_rules();
+}
+register_activation_hook( __FILE__, 'psa_activate' );
+
+function psa_deactivate() {
+	flush_rewrite_rules();
+}
+register_deactivation_hook( __FILE__, 'psa_deactivate' );
+
+function psa_get_client_ip() {
+	$headers = array(
+		'HTTP_CF_CONNECTING_IP',
+		'REMOTE_ADDR',
+	);
+	foreach ( $headers as $header ) {
+		if ( ! empty( $_SERVER[ $header ] ) ) {
+			$ip = explode( ',', sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) ) );
+			$ip = trim( $ip[0] );
+			if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+				return $ip;
+			}
+		}
+	}
+	return '0.0.0.0';
+}
+
+function psa_get_admin_user_id() {
+	$admins = get_users(
+		array(
+			'role'   => 'administrator',
+			'number' => 1,
+			'fields' => 'ID',
+		)
+	);
+	return ! empty( $admins ) ? (int) $admins[0] : 0;
+}
