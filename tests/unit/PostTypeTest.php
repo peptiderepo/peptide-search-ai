@@ -2,78 +2,38 @@
 /**
  * Tests for PSA_Post_Type class.
  *
- * Covers: taxonomy constants, default categories list, meta field constants,
- * extended meta fields, and get_all_meta_keys() helper.
+ * As of v4.5.0 this class no longer registers the `peptide` CPT or
+ * `peptide_category` taxonomy — PR Core >= 0.2.0 owns those. PSA_Post_Type's
+ * remaining public surface is: META_FIELDS, EXTENDED_META_FIELDS,
+ * get_all_meta_keys(), init_admin() (meta boxes + admin columns), and the
+ * add_admin_columns / render_admin_column helpers.
+ *
+ * These tests cover the public meta-key contract and the admin-column
+ * helpers. Registration-path coverage lives in DependencyCheckTest (which
+ * also contains the regression guard against those methods coming back).
  *
  * @package PeptideSearchAI
  */
 
 declare( strict_types=1 );
 
-// Stub WordPress functions needed by PSA_Post_Type but not by the test bootstrap.
-if ( ! function_exists( 'post_type_exists' ) ) {
-	function post_type_exists( $post_type ) {
-		return false;
-	}
-}
-if ( ! function_exists( 'register_post_type' ) ) {
-	function register_post_type( $post_type, $args = array() ) {
-		return null;
-	}
-}
-if ( ! function_exists( 'taxonomy_exists' ) ) {
-	function taxonomy_exists( $taxonomy ) {
-		return false;
-	}
-}
-if ( ! function_exists( 'register_taxonomy' ) ) {
-	function register_taxonomy( $taxonomy, $object_type, $args = array() ) {
-		return null;
-	}
-}
-if ( ! function_exists( '__' ) ) {
-	function __( $text, $domain = 'default' ) {
-		return $text;
-	}
-}
+// Stub WordPress functions needed by PSA_Post_Type at class-load time.
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action() {}
 }
 if ( ! function_exists( 'add_filter' ) ) {
 	function add_filter() {}
 }
+if ( ! function_exists( '__' ) ) {
+	function __( $text, $domain = 'default' ) {
+		return $text;
+	}
+}
 
 require_once dirname( __DIR__ ) . '/bootstrap.php';
 require_once ABSPATH . 'includes/class-psa-post-type.php';
 
 class PostTypeTest extends \PHPUnit\Framework\TestCase {
-
-	/**
-	 * Verify default categories constant contains exactly 8 entries.
-	 */
-	public function test_default_categories_count(): void {
-		$this->assertCount( 8, PSA_Post_Type::DEFAULT_CATEGORIES );
-	}
-
-	/**
-	 * Verify required category slugs exist in the constant.
-	 */
-	public function test_default_categories_slugs(): void {
-		$required = array(
-			'tissue-repair',
-			'lipid-metabolism',
-			'aging-research',
-			'dermatological',
-			'metabolic',
-			'growth-hormone',
-			'immunology',
-			'endocrine',
-		);
-
-		foreach ( $required as $slug ) {
-			$this->assertArrayHasKey( $slug, PSA_Post_Type::DEFAULT_CATEGORIES, "Missing category slug: {$slug}" );
-		}
-	}
 
 	/**
 	 * Verify core META_FIELDS constant has expected keys.
@@ -99,7 +59,7 @@ class PostTypeTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	/**
-	 * Verify extended meta fields contain the 9 new v4.3.0 fields.
+	 * Verify extended meta fields contain the 9 v4.3.0 fields.
 	 */
 	public function test_extended_meta_fields_count(): void {
 		$this->assertCount( 9, PSA_Post_Type::EXTENDED_META_FIELDS );
@@ -140,5 +100,39 @@ class PostTypeTest extends \PHPUnit\Framework\TestCase {
 		// Total should be core + extended.
 		$expected_count = count( PSA_Post_Type::META_FIELDS ) + count( PSA_Post_Type::EXTENDED_META_FIELDS );
 		$this->assertCount( $expected_count, $all_keys );
+	}
+
+	/**
+	 * add_admin_columns() inserts the Source column right after Title.
+	 * This is the CPT-independent part of the admin surface and runs even
+	 * before PSA_Post_Type_Meta is loaded by PR Core's registration.
+	 */
+	public function test_add_admin_columns_inserts_source_after_title(): void {
+		$columns = array(
+			'cb'     => '<input />',
+			'title'  => 'Title',
+			'date'   => 'Date',
+		);
+		$result = PSA_Post_Type::add_admin_columns( $columns );
+
+		$keys = array_keys( $result );
+		$this->assertSame( array( 'cb', 'title', 'psa_source', 'date' ), $keys );
+		$this->assertSame( 'Source', $result['psa_source'] );
+	}
+
+	/**
+	 * add_admin_columns() is a no-op when 'title' is not in the columns
+	 * array (defensive — WP themes/plugins can filter the columns array
+	 * upstream of us, so we must not assume 'title' is present).
+	 */
+	public function test_add_admin_columns_without_title_is_noop(): void {
+		$columns = array(
+			'cb'   => '<input />',
+			'date' => 'Date',
+		);
+		$result = PSA_Post_Type::add_admin_columns( $columns );
+
+		$this->assertSame( $columns, $result );
+		$this->assertArrayNotHasKey( 'psa_source', $result );
 	}
 }

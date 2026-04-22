@@ -1,16 +1,26 @@
 <?php
 /**
- * Registers the Peptide custom post type, taxonomy, and admin columns.
+ * PSA's consumer-side integration with the `peptide` custom post type.
  *
- * What: CPT registration, taxonomy registration, default category seeding, admin columns.
- * Who calls it: Main plugin file via psa_init() and psa_admin_init() hooks.
- * Dependencies: WordPress CPT API, taxonomy API.
+ * As of v4.5.0 the `peptide` CPT and `peptide_category` taxonomy are owned by
+ * Peptide Repo Core (PR Core) >= 0.2.0 — PSA no longer registers them. This
+ * class now wires PSA-owned admin surfaces (meta boxes, admin columns) onto
+ * the CPT that PR Core registers, and exposes the `psa_*` meta key namespace
+ * via constants for the rest of PSA to consume.
+ *
+ * What: Admin columns, meta key definitions, get_all_meta_keys() helper, and
+ * backward-compatible proxies to PSA_Post_Type_Meta.
+ * Who calls it: `psa_admin_init()` in the main plugin file, gated by
+ * PSA_Dependency_Check::is_satisfied() so admin surfaces don't bind against
+ * a missing CPT when PR Core is absent.
+ * Dependencies: PR Core >= 0.2.0 for the CPT itself (runtime); WordPress
+ * meta-box + admin-column APIs; PSA_Post_Type_Meta for meta box rendering.
  *
  * @package PeptideSearchAI
- * @since   1.0.0
- * @see     includes/class-psa-post-type-meta.php — Meta box rendering and save handlers.
- * @see     includes/class-psa-ai-content.php     — Uses DEFAULT_CATEGORIES for category assignment.
- * @see     includes/class-psa-directory.php       — Reads taxonomy for directory filtering.
+ * @since   1.0.0 (CPT registration removed in 4.5.0)
+ * @see     includes/class-psa-post-type-meta.php    — Meta box rendering and save handlers.
+ * @see     includes/class-psa-dependency-check.php  — PR Core gate used by init_admin().
+ * @see     includes/class-psa-directory.php         — Reads `peptide_category` terms for directory filtering.
  */
 declare( strict_types=1 );
 
@@ -20,7 +30,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PSA_Post_Type {
 
-	/** Default peptide category terms pre-populated on activation. slug => display name. */
+	/**
+	 * Canonical slug → display-name map for the peptide categories PSA's
+	 * AI and admin tools know how to assign terms to. This is a consumer
+	 * reference list (used by PSA_AI_Content::assign_category_term() and
+	 * the "Migrate Existing Peptides to Categories" admin button) — not a
+	 * seed list. As of PSA v4.5.0 PR Core >= 0.2.0 owns the
+	 * `peptide_category` taxonomy; the 8 terms below were seeded by PSA
+	 * in pre-v4.5.0 releases and remain intact in `wp_term_taxonomy`. PSA
+	 * no longer seeds them on activation.
+	 */
 	const DEFAULT_CATEGORIES = array(
 		'tissue-repair'    => 'Tissue Repair',
 		'lipid-metabolism' => 'Lipid Metabolism',
@@ -60,78 +79,19 @@ class PSA_Post_Type {
 		'psa_amino_acid_count'       => 'Amino Acid Count',
 	);
 
-	/** Register admin-only hooks (meta boxes, save, admin columns). */
+	/**
+	 * Register admin-only hooks (meta boxes, save, admin columns).
+	 *
+	 * Caller (`psa_admin_init`) gates this behind
+	 * PSA_Dependency_Check::is_satisfied() so meta boxes + admin columns
+	 * don't attempt to bind against a `peptide` CPT that PR Core has not
+	 * yet registered.
+	 */
 	public static function init_admin(): void {
 		add_action( 'add_meta_boxes', array( 'PSA_Post_Type_Meta', 'add_meta_boxes' ) );
 		add_action( 'save_post_peptide', array( 'PSA_Post_Type_Meta', 'save_meta' ) );
 		add_filter( 'manage_peptide_posts_columns', array( __CLASS__, 'add_admin_columns' ) );
 		add_action( 'manage_peptide_posts_custom_column', array( __CLASS__, 'render_admin_column' ), 10, 2 );
-	}
-
-	/** Register the peptide CPT. */
-	public static function register_peptide_post_type(): void {
-		if ( post_type_exists( 'peptide' ) ) {
-			return;
-		}
-
-		register_post_type( 'peptide', array(
-			'labels'          => array(
-				'name'               => 'Peptides',
-				'singular_name'      => 'Peptide',
-				'menu_name'          => 'Peptides',
-				'add_new'            => 'Add Peptide',
-				'add_new_item'       => 'Add New Peptide',
-				'edit_item'          => 'Edit Peptide',
-				'new_item'           => 'New Peptide',
-				'view_item'          => 'View Peptide',
-				'search_items'       => 'Search Peptides',
-				'not_found'          => 'No peptides found',
-				'not_found_in_trash' => 'No peptides found in Trash',
-			),
-			'public'          => true,
-			'has_archive'     => true,
-			'rewrite'         => array( 'slug' => 'peptides' ),
-			'supports'        => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
-			'menu_icon'       => 'dashicons-database',
-			'show_in_rest'    => true,
-			'capability_type' => 'post',
-			'hierarchical'    => false,
-		) );
-	}
-
-	/** Register the peptide_category taxonomy on the peptide CPT. */
-	public static function register_taxonomy(): void {
-		if ( taxonomy_exists( 'peptide_category' ) ) {
-			return;
-		}
-
-		register_taxonomy( 'peptide_category', 'peptide', array(
-			'labels'            => array(
-				'name'          => __( 'Peptide Categories', 'peptide-search-ai' ),
-				'singular_name' => __( 'Peptide Category', 'peptide-search-ai' ),
-				'search_items'  => __( 'Search Categories', 'peptide-search-ai' ),
-				'all_items'     => __( 'All Categories', 'peptide-search-ai' ),
-				'edit_item'     => __( 'Edit Category', 'peptide-search-ai' ),
-				'update_item'   => __( 'Update Category', 'peptide-search-ai' ),
-				'add_new_item'  => __( 'Add New Category', 'peptide-search-ai' ),
-				'new_item_name' => __( 'New Category Name', 'peptide-search-ai' ),
-				'menu_name'     => __( 'Categories', 'peptide-search-ai' ),
-			),
-			'hierarchical'      => true,
-			'public'            => true,
-			'show_in_rest'      => true,
-			'show_admin_column' => true,
-			'rewrite'           => array( 'slug' => 'peptide-category' ),
-		) );
-	}
-
-	/** Pre-populate default category terms on activation. Idempotent. */
-	public static function populate_default_categories(): void {
-		foreach ( self::DEFAULT_CATEGORIES as $slug => $name ) {
-			if ( ! term_exists( $slug, 'peptide_category' ) ) {
-				wp_insert_term( $name, 'peptide_category', array( 'slug' => $slug ) );
-			}
-		}
 	}
 
 	/**

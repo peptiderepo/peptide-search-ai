@@ -2,7 +2,17 @@
 /**
  * Fired when the plugin is uninstalled.
  *
- * Cleans up all plugin data: peptide posts, post meta, options, transients, and rewrite rules.
+ * As of PSA v4.5.0 the `peptide` custom post type and `peptide_category`
+ * taxonomy are owned by Peptide Repo Core (PR Core) — PSA is a consumer, not
+ * the owner. Uninstalling PSA must therefore NOT delete peptide posts,
+ * peptide_category terms, or any `psa_*` post meta: that data predates PR
+ * Core and is consumed by other plugins via PR Core's data layer + PSA's
+ * REST endpoints. Removing it on uninstall would be destructive across
+ * plugin boundaries.
+ *
+ * This uninstaller only removes PSA's own option rows, transients, and the
+ * `wp_psa_api_logs` table (PSA's internal cost-tracking table — no other
+ * plugin reads from it).
  *
  * @package PeptideSearchAI
  */
@@ -14,37 +24,12 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 global $wpdb;
 
-// 1. Delete all peptide custom posts and their meta.
-$peptide_ids = $wpdb->get_col(
-	"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'peptide'"
-);
-
-if ( ! empty( $peptide_ids ) ) {
-	foreach ( $peptide_ids as $post_id ) {
-		wp_delete_post( (int) $post_id, true ); // Force delete, bypass trash.
-	}
-}
-
-// 2. Delete peptide_category taxonomy terms and relationships.
-$terms = get_terms(
-	array(
-		'taxonomy'   => 'peptide_category',
-		'hide_empty' => false,
-		'fields'     => 'ids',
-	)
-);
-if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
-	foreach ( $terms as $term_id ) {
-		wp_delete_term( (int) $term_id, 'peptide_category' );
-	}
-}
-
-// 3. Delete plugin options.
+// 1. Delete plugin options.
 delete_option( 'psa_settings' );
 delete_option( 'psa_search_cache_gen' );
 delete_option( 'psa_db_version' );
 
-// 4. Delete all plugin transients (validation cache, rate limits).
+// 2. Delete all plugin transients (validation cache, rate limits, PubChem cache).
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
@@ -53,8 +38,7 @@ $wpdb->query(
 	)
 );
 
-// 5. Drop API logs table.
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}psa_api_logs" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+// 3. Drop PSA's API logs table. Owned entirely by PSA; no cross-plugin reads.
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}psa_api_logs" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
-// 6. Flush rewrite rules to clean up the peptide post type permalinks.
-flush_rewrite_rules();
+// 4. NOT deleted (owned by Peptide Repo Core as of PSA v4.5.0)

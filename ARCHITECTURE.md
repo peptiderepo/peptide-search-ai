@@ -10,8 +10,8 @@ Peptide Search AI is a WordPress plugin that transforms sites into intelligent, 
 
 ```
 peptide-search-ai/
-├── peptide-search-ai.php              Main plugin file; defines constants, hooks init/admin_init
-├── uninstall.php                      Cleans up all peptide posts, meta, options, transients
+├── peptide-search-ai.php              Main plugin file; defines constants, hooks init/admin_init, gates CPT boot paths on PSA_Dependency_Check
+├── uninstall.php                      Cleans up PSA-owned options, transients, and the `wp_psa_api_logs` table (v4.5.0+ does NOT touch peptide posts/terms — owned by PR Core)
 ├── readme.txt                         Plugin directory listing (WordPress.org metadata)
 ├── composer.json                      PHP dependencies; PSR-4 autoloader for includes/
 ├── .phpcs.xml.dist                    WordPress Coding Standards (WPCS) configuration
@@ -20,7 +20,8 @@ peptide-search-ai/
 ├── includes/
 │   ├── class-psa-config.php           Configuration constants (rate limits, timeouts, tokens, TTL)
 │   ├── class-psa-encryption.php       AES-256-CBC encryption for API keys at rest
-│   ├── class-psa-post-type.php        CPT registration, peptide_category taxonomy, meta field definitions
+│   ├── class-psa-dependency-check.php PR Core >= 0.2.0 dependency gate + admin notice (v4.5.0)
+│   ├── class-psa-post-type.php        Admin columns + `psa_*` meta key definitions on the `peptide` CPT owned by PR Core
 │   ├── class-psa-search.php           AJAX search, REST API route, shortcode rendering, cache mgmt
 │   ├── class-psa-directory.php        Browsable directory: [peptide_directory] shortcode + /v1/compounds REST endpoint
 │   ├── class-psa-ai-generator.php     AI pipeline orchestrator (validation, generation, category assignment, meta save)
@@ -214,6 +215,9 @@ graph TD
 ### 1. Custom Post Type + Post Meta vs. Custom Tables
 
 **Decision:** Use CPT (`post_type='peptide'`) with post meta fields (`psa_*`).
+Registration moved from PSA to Peptide Repo Core (PR Core) in PSA v4.5.0 —
+see the "Post types" section above. The CPT-vs-custom-tables choice itself
+still holds; only ownership of the registration moved.
 
 **Rationale:**
 - **WordPress integration:** Leverage native post, user, revision, and permission systems.
@@ -274,6 +278,23 @@ graph TD
 - PubChem cache: 7 days for hits, 12 hours for misses
 - Rate limit counters: 1 hour per request window
 
+## Post types
+
+PSA no longer registers any post type. The `peptide` CPT and `peptide_category`
+taxonomy are owned by Peptide Repo Core (PR Core). PSA depends on PR Core ≥ 0.2.0
+for these to be available.
+
+PSA still owns:
+- Meta boxes attached to the `peptide` CPT (psa_peptide_data, psa_extended_data)
+- The `psa_*` meta key namespace on peptide posts
+- Search index, directory widget, KB renderer, search REST endpoints
+
+Dependency is enforced at boot by `PSA_Dependency_Check::is_satisfied()` — when
+PR Core < 0.2.0 or is absent, PSA renders an admin notice and all CPT-bound
+surfaces (meta boxes, admin columns, directory, KB renderer, search, single-
+peptide template) skip registration. Non-CPT surfaces (settings page, upgrade
+driver) still boot so the admin can read the notice and configure the plugin.
+
 ## Data Storage
 
 ### Post Meta Fields (PSA_Post_Type::META_FIELDS)
@@ -307,13 +328,19 @@ All stored on peptide posts as post meta:
 | `psa_cycle_parameters` | Cycle/protocol phase info | Text | AI (v4.3.0) |
 | `psa_amino_acid_count` | Number of amino acids | Integer | Derived from sequence (v4.3.0) |
 
-### Taxonomy: peptide_category (v4.3.0)
+### Taxonomy: peptide_category
 
-Hierarchical taxonomy registered on the `peptide` CPT. Pre-populated terms:
-Tissue Repair, Lipid Metabolism, Aging Research, Dermatological, Metabolic, Growth Hormone, Immunology, Endocrine.
+Hierarchical taxonomy on the `peptide` CPT. **Registered by PR Core** (>= 0.2.0)
+as of PSA v4.5.0 — PSA no longer calls `register_taxonomy( 'peptide_category', … )`.
+The 8 terms seeded by earlier PSA versions (Tissue Repair, Lipid Metabolism, Aging
+Research, Dermatological, Metabolic, Growth Hormone, Immunology, Endocrine) stay
+intact because `wp_term_taxonomy` is keyed on the taxonomy name, which is
+unchanged.
 
-Auto-assigned during AI generation via `PSA_AI_Generator::assign_category_term()`.
-Migration for existing peptides via admin "Migrate Existing Peptides to Categories" button.
+PSA continues to *read* and *write* term assignments on peptide posts — any
+plugin can operate on a public taxonomy. `PSA_AI_Generator::assign_category_term()`
+still auto-assigns during AI generation; the admin "Migrate Existing Peptides
+to Categories" button still runs.
 
 ### Integration Hooks (v4.3.0)
 
@@ -434,40 +461,4 @@ The plugin stores the schema version it last migrated to in a separate option, `
 
 ## Performance Optimizations
 
-- **Post caching:** `_prime_post_caches()` and `update_meta_cache()` batch-load posts and meta (lines 458–459 in class-psa-search.php).
-- **Transient caching:** Search results cached 6 hours; invalidated on post save.
-- **Conditional asset loading:** CSS/JS only loaded on relevant pages.
-- **Lazy PubChem:** Optional, can be disabled via setting.
-- **Daily generation cap:** 50/day to limit API costs.
-- **Separate validation model:** Fast/cheap model for upfront validation to reduce full-generation calls.
-
-## Testing
-
-**CI Pipeline:** `.github/workflows/ci.yml`
-- PHPUnit tests across PHP 7.4, 8.1, 8.3
-- PHP syntax checks across PHP 7.4, 8.1, 8.3
-- WordPress Coding Standards (PHPCS) validation
-- JavaScript syntax checks (Node.js)
-
-**Post-Deploy:** `.github/workflows/deploy.yml`
-- HTTP health check verifies site returns 200
-- REST API smoke test verifies `/wp-json/peptides/v1/search?q=BPC-157` responds
-
-**Manual Testing Checklist:**
-- Search for existing peptide → results appear
-- Search for new peptide (valid) → "pending" message → check back → content generated
-- Search for invalid peptide → "not recognized" message
-- Test rate limits (10/hour AJAX, 20/hour REST API)
-- Verify PubChem data merges correctly
-- Test auto-publish on/off
-- Verify shortcode works multiple times on same page
-- Test on mobile (600px breakpoint)
-
-## Deployment
-
-See `.github/workflows/deploy.yml`:
-1. Push to main triggers CI tests.
-2. If tests pass, validate deployment readiness (required files, no sensitive data).
-3. Sync clean files to orphan `deploy` branch.
-4. SSH to Hostinger, git pull `deploy` branch into plugin directory.
-5. Verify deployment (check version, required files exist).
+- **Post caching:** `_prime_post_caches()` and `update_meta_cache()` batch-load posts and meta (lines 458–4
