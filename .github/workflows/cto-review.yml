@@ -208,7 +208,8 @@ jobs:
           1. Assess whether the change is safe to merge and deploy to production (peptiderepo.com on Hostinger WordPress).
           2. Flag security issues, cost traps (paid AI API usage), performance regressions, missing input sanitization, missing output escaping, hardcoded secrets, broken migrations, or violations of the repo's CONVENTIONS.md.
           3. Check that the PR follows the project's git workflow: branch naming (claude/<scope>-<date>), Agent-Session trailer in commits, PR description covers what/why/risk/test-plan.
-          4. Be concise and direct. No pleasantries. Call out concrete line-level issues when possible.
+          4. CTO app-map freshness. If this PR modifies any of: (a) the admin settings surface (register_setting, add_submenu_page, add_options_page, settings field labels, option keys, types, defaults); (b) the file/class structure (any file added, renamed, split per the 300-line rule, or materially restructured); or (c) the data flow (new external API client, new hook/filter fired publicly, new scheduled job, or changed class responsibilities) — then the PR description MUST include a line referencing an accompanying update to `Peptide Repo CTO/app-maps/<repo-slug>.md`. The CTO workspace is a separate repo, so CI cannot verify the doc update mechanically — you must inspect the PR description for an explicit mention. If the description is silent despite a triggering change, raise this as a MAJOR concern (not blocking) so the author can add the mention or open a follow-up PR on the CTO workspace.
+          5. Be concise and direct. No pleasantries. Call out concrete line-level issues when possible.
 
           You MUST respond by calling the submit_review function. Do not write prose outside the tool call.
 
