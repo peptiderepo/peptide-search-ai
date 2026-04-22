@@ -122,4 +122,17 @@ class PostTypeTest extends \PHPUnit\Framework\TestCase {
 
 	/**
 	 * add_admin_columns() is a no-op when 'title' is not in the columns
-	 * array (defensive — WP themes/plugins ca
+	 * array (defensive — WP themes/plugins can filter the columns array
+	 * upstream of us, so we must not assume 'title' is present).
+	 */
+	public function test_add_admin_columns_without_title_is_noop(): void {
+		$columns = array(
+			'cb'   => '<input />',
+			'date' => 'Date',
+		);
+		$result = PSA_Post_Type::add_admin_columns( $columns );
+
+		$this->assertSame( $columns, $result );
+		$this->assertArrayNotHasKey( 'psa_source', $result );
+	}
+}
