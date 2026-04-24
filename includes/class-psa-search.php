@@ -134,7 +134,7 @@ class PSA_Search {
 	 * @return string HTML output.
 	 */
 	public static function render_search_form( $atts ): string {
-		self::$instance_count++;
+		++self::$instance_count;
 		$instance = self::$instance_count;
 
 		$atts = shortcode_atts(
@@ -256,7 +256,11 @@ class PSA_Search {
 			$results[] = self::format_peptide( (int) $id );
 		}
 
-		$response = array( 'results' => $results, 'total' => count( $results ), 'query' => $query );
+		$response = array(
+			'results' => $results,
+			'total'   => count( $results ),
+			'query'   => $query,
+		);
 
 		set_transient( $cache_key, $response, 6 * HOUR_IN_SECONDS );
 
@@ -290,11 +294,14 @@ class PSA_Search {
 	// ── Backward-compatible proxies ─────────────────────────────────────
 
 	/** @see PSA_Search_Handler::ajax_search() */
-	public static function ajax_search(): void { PSA_Search_Handler::ajax_search(); }
+	public static function ajax_search(): void {
+		PSA_Search_Handler::ajax_search(); }
 
 	/** @see PSA_Search_Handler::create_pending_placeholder() */
-	public static function create_pending_placeholder( string $peptide_name ) { return PSA_Search_Handler::create_pending_placeholder( $peptide_name ); }
+	public static function create_pending_placeholder( string $peptide_name ) {
+		return PSA_Search_Handler::create_pending_placeholder( $peptide_name ); }
 
 	/** @see PSA_Search_Handler::schedule_background_generation() */
-	public static function schedule_background_generation( int $post_id, string $peptide_name ): void { PSA_Search_Handler::schedule_background_generation( $post_id, $peptide_name ); }
+	public static function schedule_background_generation( int $post_id, string $peptide_name ): void {
+		PSA_Search_Handler::schedule_background_generation( $post_id, $peptide_name ); }
 }

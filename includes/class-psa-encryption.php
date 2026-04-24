@@ -79,7 +79,7 @@ class PSA_Encryption {
 		}
 
 		// First 16 bytes are the IV.
-		$iv = substr( $data, 0, 16 );
+		$iv             = substr( $data, 0, 16 );
 		$encrypted_data = substr( $data, 16 );
 
 		// Decrypt.

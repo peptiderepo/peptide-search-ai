@@ -106,7 +106,7 @@ class PSA_Batch_Enrichment {
 		PSA_AI_Generator::background_generate( $post_id, $peptide_name );
 
 		// Check outcome: did generation succeed?
-		$error = get_post_meta( $post_id, 'psa_generation_error', true );
+		$error          = get_post_meta( $post_id, 'psa_generation_error', true );
 		$refreshed_post = get_post( $post_id );
 
 		// If still in draft (generation failed or auto_publish is 'draft'), force republish.

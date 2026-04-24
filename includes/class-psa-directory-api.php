@@ -23,18 +23,45 @@ class PSA_Directory_API {
 	 * Register the /v1/compounds endpoint. Public (no auth) — rate limiting at server/CDN level.
 	 */
 	public static function register_rest_routes(): void {
-		register_rest_route( 'peptide-search-ai/v1', '/compounds', array(
-			'methods'             => 'GET',
-			'callback'            => array( __CLASS__, 'rest_compounds' ),
-			'permission_callback' => '__return_true',
-			'args'                => array(
-				'search'   => array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'default' => '' ),
-				'category' => array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'default' => '' ),
-				'fields'   => array( 'type' => 'string', 'enum' => array( 'basic', 'full' ), 'default' => 'full' ),
-				'page'     => array( 'type' => 'integer', 'default' => 1, 'minimum' => 1, 'sanitize_callback' => 'absint' ),
-				'per_page' => array( 'type' => 'integer', 'default' => PSA_Directory::PER_PAGE_DEFAULT, 'minimum' => 1, 'maximum' => PSA_Directory::PER_PAGE_MAX, 'sanitize_callback' => 'absint' ),
-			),
-		) );
+		register_rest_route(
+			'peptide-search-ai/v1',
+			'/compounds',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'rest_compounds' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'search'   => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+						'default'           => '',
+					),
+					'category' => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+						'default'           => '',
+					),
+					'fields'   => array(
+						'type'    => 'string',
+						'enum'    => array( 'basic', 'full' ),
+						'default' => 'full',
+					),
+					'page'     => array(
+						'type'              => 'integer',
+						'default'           => 1,
+						'minimum'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+					'per_page' => array(
+						'type'              => 'integer',
+						'default'           => PSA_Directory::PER_PAGE_DEFAULT,
+						'minimum'           => 1,
+						'maximum'           => PSA_Directory::PER_PAGE_MAX,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -65,11 +92,13 @@ class PSA_Directory_API {
 		}
 
 		if ( ! empty( $category ) ) {
-			$query_args['tax_query'] = array( array(
-				'taxonomy' => 'peptide_category',
-				'field'    => 'slug',
-				'terms'    => $category,
-			) );
+			$query_args['tax_query'] = array(
+				array(
+					'taxonomy' => 'peptide_category',
+					'field'    => 'slug',
+					'terms'    => $category,
+				),
+			);
 		}
 
 		$query    = new WP_Query( $query_args );
@@ -83,13 +112,16 @@ class PSA_Directory_API {
 			$compounds[] = self::format_compound( $post, $fields );
 		}
 
-		$response = new WP_REST_Response( array(
-			'compounds'   => $compounds,
-			'total'       => (int) $query->found_posts,
-			'total_pages' => (int) $query->max_num_pages,
-			'page'        => $page,
-			'per_page'    => $per_page,
-		), 200 );
+		$response = new WP_REST_Response(
+			array(
+				'compounds'   => $compounds,
+				'total'       => (int) $query->found_posts,
+				'total_pages' => (int) $query->max_num_pages,
+				'page'        => $page,
+				'per_page'    => $per_page,
+			),
+			200
+		);
 
 		$response->header( 'X-WP-Total', (string) $query->found_posts );
 		$response->header( 'X-WP-TotalPages', (string) $query->max_num_pages );
@@ -111,7 +143,10 @@ class PSA_Directory_API {
 		$categories = array();
 		if ( ! is_wp_error( $terms ) ) {
 			foreach ( $terms as $term ) {
-				$categories[] = array( 'slug' => $term->slug, 'name' => $term->name );
+				$categories[] = array(
+					'slug' => $term->slug,
+					'name' => $term->name,
+				);
 			}
 		}
 
@@ -132,27 +167,30 @@ class PSA_Directory_API {
 			return $basic;
 		}
 
-		$full = array_merge( $basic, array(
-			'excerpt'               => wp_trim_words( $post->post_content, 30 ),
-			'description'           => wp_trim_words( $post->post_content, 80 ),
-			'sequence'              => get_post_meta( $id, 'psa_sequence', true ),
-			'molecular_weight'      => get_post_meta( $id, 'psa_molecular_weight', true ),
-			'molecular_formula'     => get_post_meta( $id, 'psa_molecular_formula', true ),
-			'aliases'               => get_post_meta( $id, 'psa_aliases', true ),
-			'mechanism'             => get_post_meta( $id, 'psa_mechanism', true ),
-			'research_apps'         => get_post_meta( $id, 'psa_research_apps', true ),
-			'safety_profile'        => get_post_meta( $id, 'psa_safety_profile', true ),
-			'dosage_info'           => get_post_meta( $id, 'psa_dosage_info', true ),
-			'references'            => get_post_meta( $id, 'psa_references', true ),
-			'pubchem_cid'           => get_post_meta( $id, 'psa_pubchem_cid', true ),
-			'solubility'            => get_post_meta( $id, 'psa_solubility', true ),
-			'vial_size_mg'          => get_post_meta( $id, 'psa_vial_size_mg', true ),
-			'storage_lyophilized'   => get_post_meta( $id, 'psa_storage_lyophilized', true ),
-			'storage_reconstituted' => get_post_meta( $id, 'psa_storage_reconstituted', true ),
-			'typical_dose_mcg'      => get_post_meta( $id, 'psa_typical_dose_mcg', true ),
-			'cycle_parameters'      => get_post_meta( $id, 'psa_cycle_parameters', true ),
-			'amino_acid_count'      => get_post_meta( $id, 'psa_amino_acid_count', true ),
-		) );
+		$full = array_merge(
+			$basic,
+			array(
+				'excerpt'               => wp_trim_words( $post->post_content, 30 ),
+				'description'           => wp_trim_words( $post->post_content, 80 ),
+				'sequence'              => get_post_meta( $id, 'psa_sequence', true ),
+				'molecular_weight'      => get_post_meta( $id, 'psa_molecular_weight', true ),
+				'molecular_formula'     => get_post_meta( $id, 'psa_molecular_formula', true ),
+				'aliases'               => get_post_meta( $id, 'psa_aliases', true ),
+				'mechanism'             => get_post_meta( $id, 'psa_mechanism', true ),
+				'research_apps'         => get_post_meta( $id, 'psa_research_apps', true ),
+				'safety_profile'        => get_post_meta( $id, 'psa_safety_profile', true ),
+				'dosage_info'           => get_post_meta( $id, 'psa_dosage_info', true ),
+				'references'            => get_post_meta( $id, 'psa_references', true ),
+				'pubchem_cid'           => get_post_meta( $id, 'psa_pubchem_cid', true ),
+				'solubility'            => get_post_meta( $id, 'psa_solubility', true ),
+				'vial_size_mg'          => get_post_meta( $id, 'psa_vial_size_mg', true ),
+				'storage_lyophilized'   => get_post_meta( $id, 'psa_storage_lyophilized', true ),
+				'storage_reconstituted' => get_post_meta( $id, 'psa_storage_reconstituted', true ),
+				'typical_dose_mcg'      => get_post_meta( $id, 'psa_typical_dose_mcg', true ),
+				'cycle_parameters'      => get_post_meta( $id, 'psa_cycle_parameters', true ),
+				'amino_acid_count'      => get_post_meta( $id, 'psa_amino_acid_count', true ),
+			)
+		);
 
 		return apply_filters( 'psa_rest_compound_data', $full, $id );
 	}

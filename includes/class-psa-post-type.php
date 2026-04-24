@@ -68,15 +68,15 @@ class PSA_Post_Type {
 
 	/** Extended meta fields added in v4.3.0 for the directory feature. */
 	const EXTENDED_META_FIELDS = array(
-		'psa_half_life'              => 'Half-Life',
-		'psa_stability'              => 'Stability',
-		'psa_solubility'             => 'Solubility / Reconstitution',
-		'psa_vial_size_mg'           => 'Common Vial Size (mg)',
-		'psa_storage_lyophilized'    => 'Storage (Lyophilized)',
-		'psa_storage_reconstituted'  => 'Storage (Reconstituted)',
-		'psa_typical_dose_mcg'       => 'Typical Research Dose',
-		'psa_cycle_parameters'       => 'Cycle / Protocol Parameters',
-		'psa_amino_acid_count'       => 'Amino Acid Count',
+		'psa_half_life'             => 'Half-Life',
+		'psa_stability'             => 'Stability',
+		'psa_solubility'            => 'Solubility / Reconstitution',
+		'psa_vial_size_mg'          => 'Common Vial Size (mg)',
+		'psa_storage_lyophilized'   => 'Storage (Lyophilized)',
+		'psa_storage_reconstituted' => 'Storage (Reconstituted)',
+		'psa_typical_dose_mcg'      => 'Typical Research Dose',
+		'psa_cycle_parameters'      => 'Cycle / Protocol Parameters',
+		'psa_amino_acid_count'      => 'Amino Acid Count',
 	);
 
 	/**
@@ -121,8 +121,11 @@ class PSA_Post_Type {
 		if ( 'psa_source' === $column ) {
 			$source = get_post_meta( $post_id, 'psa_source', true );
 			$labels = array(
-				'ai-generated' => 'AI', 'pubchem' => 'PubChem',
-				'manual' => 'Manual', 'pending' => 'Pending', 'failed' => 'Failed',
+				'ai-generated' => 'AI',
+				'pubchem'      => 'PubChem',
+				'manual'       => 'Manual',
+				'pending'      => 'Pending',
+				'failed'       => 'Failed',
 			);
 			echo esc_html( $labels[ $source ] ?? '—' );
 		}
@@ -140,14 +143,18 @@ class PSA_Post_Type {
 	// ── Backward-compatible proxies (meta boxes moved to PSA_Post_Type_Meta) ──
 
 	/** @see PSA_Post_Type_Meta::add_meta_boxes() */
-	public static function add_meta_boxes(): void { PSA_Post_Type_Meta::add_meta_boxes(); }
+	public static function add_meta_boxes(): void {
+		PSA_Post_Type_Meta::add_meta_boxes(); }
 
 	/** @see PSA_Post_Type_Meta::render_meta_box() */
-	public static function render_meta_box( $post ): void { PSA_Post_Type_Meta::render_meta_box( $post ); }
+	public static function render_meta_box( $post ): void {
+		PSA_Post_Type_Meta::render_meta_box( $post ); }
 
 	/** @see PSA_Post_Type_Meta::render_extended_meta_box() */
-	public static function render_extended_meta_box( $post ): void { PSA_Post_Type_Meta::render_extended_meta_box( $post ); }
+	public static function render_extended_meta_box( $post ): void {
+		PSA_Post_Type_Meta::render_extended_meta_box( $post ); }
 
 	/** @see PSA_Post_Type_Meta::save_meta() */
-	public static function save_meta( int $post_id ): void { PSA_Post_Type_Meta::save_meta( $post_id ); }
+	public static function save_meta( int $post_id ): void {
+		PSA_Post_Type_Meta::save_meta( $post_id ); }
 }

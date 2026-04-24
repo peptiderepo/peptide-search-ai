@@ -1,5 +1,5 @@
 === Peptide Search AI ===
-Contributors: terence
+Contributors: peptiderepo
 Tags: peptide, database, search, AI, science, research, openrouter
 Requires at least: 5.8
 Tested up to: 6.7

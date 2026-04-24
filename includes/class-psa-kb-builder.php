@@ -47,7 +47,7 @@ class PSA_KB_Builder {
 			return;
 		}
 
-		$title = sanitize_text_field( $ai_data['name'] ?? $peptide_name );
+		$title    = sanitize_text_field( $ai_data['name'] ?? $peptide_name );
 		$existing = get_posts(
 			array(
 				'post_type'   => 'epkb_post_type_1',
@@ -124,10 +124,10 @@ class PSA_KB_Builder {
 
 		// Research & Potential Benefits (with h3 subheadings).
 		if ( ! empty( $ai_data['research_benefits'] ) || ! empty( $ai_data['research_applications'] ) ) {
-			$c .= '<h2>Research &amp; Potential Benefits</h2>' . "\n";
-			$c .= '<p><em>The following potential benefits are based on animal studies and preclinical research. Human clinical trial data is extremely limited.</em></p>' . "\n";
+			$c       .= '<h2>Research &amp; Potential Benefits</h2>' . "\n";
+			$c       .= '<p><em>The following potential benefits are based on animal studies and preclinical research. Human clinical trial data is extremely limited.</em></p>' . "\n";
 			$research = $ai_data['research_benefits'] ?? $ai_data['research_applications'] ?? '';
-			$c .= self::research_with_subheadings( $research );
+			$c       .= self::research_with_subheadings( $research );
 		}
 
 		// Administration & Dosing.

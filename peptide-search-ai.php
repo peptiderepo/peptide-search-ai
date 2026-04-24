@@ -1,10 +1,10 @@
 <?php
 /**
  * Plugin Name: Peptide Search AI
- * Plugin URI:  https://example.com/peptide-search-ai
+ * Plugin URI:  https://github.com/peptiderepo/peptide-search-ai
  * Description: Searchable peptide database with AI-powered auto-population and browsable directory.
- * Version:     4.5.0
- * Author:      Terence
+ * Version:     4.5.1
+ * Author:      peptiderepo
  * License:     GPL v2 or later
  * Text Domain: peptide-search-ai
  * Requires at least: 5.8
@@ -156,20 +156,20 @@ function psa_enqueue_frontend_assets() {
 			'ajaxurl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'psa_search_nonce' ),
 			'i18n'    => array(
-				'error'              => __( 'Error:', 'peptide-search-ai' ),
-				'searchFailed'       => __( 'Search failed.', 'peptide-search-ai' ),
-				'unexpected'         => __( 'Unexpected response.', 'peptide-search-ai' ),
-				'rateLimited'        => __( 'Too many requests. Please try again later.', 'peptide-search-ai' ),
-				'networkError'       => __( 'Could not connect to the server. Please try again.', 'peptide-search-ai' ),
-				'timeout'            => __( 'Request timed out. The server took too long to respond. Please try again.', 'peptide-search-ai' ),
-				'connectionError'    => __( 'Network error. Please check your connection and try again.', 'peptide-search-ai' ),
-				'serverError'        => __( 'Server error. Please try again later.', 'peptide-search-ai' ),
-				'unavailable'        => __( 'Server is temporarily unavailable. Please try again later.', 'peptide-search-ai' ),
-				'peptidesFound'      => __( 'peptide(s) found', 'peptide-search-ai' ),
-				'pendingMsg'         => __( 'is currently being added to our database. Please check back again later.', 'peptide-search-ai' ),
-				'invalidMsg'         => __( 'does not appear to be a recognized peptide. Please check the spelling or try a different search term.', 'peptide-search-ai' ),
-				'verified'           => __( 'Verified', 'peptide-search-ai' ),
-				'curated'            => __( 'Curated', 'peptide-search-ai' ),
+				'error'           => __( 'Error:', 'peptide-search-ai' ),
+				'searchFailed'    => __( 'Search failed.', 'peptide-search-ai' ),
+				'unexpected'      => __( 'Unexpected response.', 'peptide-search-ai' ),
+				'rateLimited'     => __( 'Too many requests. Please try again later.', 'peptide-search-ai' ),
+				'networkError'    => __( 'Could not connect to the server. Please try again.', 'peptide-search-ai' ),
+				'timeout'         => __( 'Request timed out. The server took too long to respond. Please try again.', 'peptide-search-ai' ),
+				'connectionError' => __( 'Network error. Please check your connection and try again.', 'peptide-search-ai' ),
+				'serverError'     => __( 'Server error. Please try again later.', 'peptide-search-ai' ),
+				'unavailable'     => __( 'Server is temporarily unavailable. Please try again later.', 'peptide-search-ai' ),
+				'peptidesFound'   => __( 'peptide(s) found', 'peptide-search-ai' ),
+				'pendingMsg'      => __( 'is currently being added to our database. Please check back again later.', 'peptide-search-ai' ),
+				'invalidMsg'      => __( 'does not appear to be a recognized peptide. Please check the spelling or try a different search term.', 'peptide-search-ai' ),
+				'verified'        => __( 'Verified', 'peptide-search-ai' ),
+				'curated'         => __( 'Curated', 'peptide-search-ai' ),
 			),
 		)
 	);
