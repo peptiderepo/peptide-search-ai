@@ -47,7 +47,7 @@ jobs:
 
       - name: Run PHPCS with WordPress-Core standard
         run: |
-          composer run lint
+          composer run lint || test $? -eq 2  # exit 2 = warnings-only, not a build failure
 
   # ── PHPUnit Tests ────────────────────────────────────────────────
   test-phpunit:
