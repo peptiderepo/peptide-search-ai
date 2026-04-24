@@ -29,7 +29,7 @@ class PSA_Cost_Reporter {
 	public static function get_monthly_spend( ?int $year = null, ?int $month = null ): float {
 		global $wpdb;
 		list( $start, $end ) = self::month_range( $year, $month );
-		$table = $wpdb->prefix . 'psa_api_logs';
+		$table               = $wpdb->prefix . 'psa_api_logs';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$result = $wpdb->get_var(
@@ -53,7 +53,7 @@ class PSA_Cost_Reporter {
 	public static function get_monthly_tokens( ?int $year = null, ?int $month = null ): int {
 		global $wpdb;
 		list( $start, $end ) = self::month_range( $year, $month );
-		$table = $wpdb->prefix . 'psa_api_logs';
+		$table               = $wpdb->prefix . 'psa_api_logs';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$result = $wpdb->get_var(
@@ -80,7 +80,7 @@ class PSA_Cost_Reporter {
 	public static function get_monthly_estimated_count( ?int $year = null, ?int $month = null ): int {
 		global $wpdb;
 		list( $start, $end ) = self::month_range( $year, $month );
-		$table = $wpdb->prefix . 'psa_api_logs';
+		$table               = $wpdb->prefix . 'psa_api_logs';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$result = $wpdb->get_var(

@@ -47,8 +47,12 @@ class PSA_Post_Type_Meta {
 		wp_nonce_field( 'psa_save_meta', 'psa_meta_nonce' );
 
 		$textarea_fields = array(
-			'psa_sequence', 'psa_mechanism', 'psa_research_apps',
-			'psa_safety_profile', 'psa_dosage_info', 'psa_references',
+			'psa_sequence',
+			'psa_mechanism',
+			'psa_research_apps',
+			'psa_safety_profile',
+			'psa_dosage_info',
+			'psa_references',
 		);
 
 		echo '<table class="form-table">';
@@ -60,8 +64,11 @@ class PSA_Post_Type_Meta {
 
 			if ( 'psa_source' === $key ) {
 				$options = array(
-					'' => '— Select —', 'ai-generated' => 'AI Generated',
-					'pubchem' => 'PubChem Verified', 'manual' => 'Manual Entry', 'pending' => 'Pending Generation',
+					''             => '— Select —',
+					'ai-generated' => 'AI Generated',
+					'pubchem'      => 'PubChem Verified',
+					'manual'       => 'Manual Entry',
+					'pending'      => 'Pending Generation',
 				);
 				echo '<select name="' . esc_attr( $key ) . '" id="' . esc_attr( $key ) . '">';
 				foreach ( $options as $opt_val => $opt_label ) {
@@ -113,7 +120,7 @@ class PSA_Post_Type_Meta {
 	public static function save_meta( int $post_id ): void {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		if ( ! isset( $_POST['psa_meta_nonce'] ) ||
-			 ! wp_verify_nonce( wp_unslash( $_POST['psa_meta_nonce'] ), 'psa_save_meta' ) ) {
+			! wp_verify_nonce( wp_unslash( $_POST['psa_meta_nonce'] ), 'psa_save_meta' ) ) {
 			return;
 		}
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {

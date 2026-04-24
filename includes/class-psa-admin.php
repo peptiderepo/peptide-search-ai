@@ -40,9 +40,13 @@ class PSA_Admin {
 
 	/** Register settings fields — rendering delegated to PSA_Admin_Page. */
 	public static function register_settings(): void {
-		register_setting( 'psa_settings_group', 'psa_settings', array(
-			'sanitize_callback' => array( __CLASS__, 'sanitize_settings' ),
-		) );
+		register_setting(
+			'psa_settings_group',
+			'psa_settings',
+			array(
+				'sanitize_callback' => array( __CLASS__, 'sanitize_settings' ),
+			)
+		);
 
 		add_settings_section( 'psa_ai_section', __( 'OpenRouter API Settings', 'peptide-search-ai' ), array( 'PSA_Admin_Page', 'render_section_description' ), 'peptide-search-ai' );
 		add_settings_field( 'api_key', __( 'API Key', 'peptide-search-ai' ), array( 'PSA_Admin_Page', 'render_api_key_field' ), 'peptide-search-ai', 'psa_ai_section' );
@@ -95,18 +99,27 @@ class PSA_Admin {
 
 		if ( 'migrate_categories' === $action && wp_verify_nonce( $nonce, 'psa_migrate_categories' ) ) {
 			self::run_category_migration();
-			add_action( 'admin_notices', function () {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category migration completed.', 'peptide-search-ai' ) . '</p></div>';
-			} );
+			add_action(
+				'admin_notices',
+				function () {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category migration completed.', 'peptide-search-ai' ) . '</p></div>';
+				}
+			);
 		}
 
 		if ( 'reenrich' === $action && wp_verify_nonce( $nonce, 'psa_reenrich' ) ) {
 			$queued = self::queue_reenrichment();
-			add_action( 'admin_notices', function () use ( $queued ) {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( sprintf(
-					__( '%d peptides queued for re-enrichment.', 'peptide-search-ai' ), $queued
-				) ) . '</p></div>';
-			} );
+			add_action(
+				'admin_notices',
+				function () use ( $queued ) {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(
+						sprintf(
+							__( '%d peptides queued for re-enrichment.', 'peptide-search-ai' ),
+							$queued
+						)
+					) . '</p></div>';
+				}
+			);
 		}
 	}
 
@@ -117,12 +130,14 @@ class PSA_Admin {
 	 * Idempotent — safe to run multiple times.
 	 */
 	private static function run_category_migration(): void {
-		$posts = get_posts( array(
-			'post_type'      => 'peptide',
-			'post_status'    => array( 'publish', 'draft' ),
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-		) );
+		$posts = get_posts(
+			array(
+				'post_type'      => 'peptide',
+				'post_status'    => array( 'publish', 'draft' ),
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+			)
+		);
 
 		foreach ( $posts as $post_id ) {
 			$terms = wp_get_object_terms( $post_id, 'peptide_category' );
@@ -199,17 +214,25 @@ class PSA_Admin {
 	 * @return int Number of peptides queued.
 	 */
 	private static function queue_reenrichment(): int {
-		$posts = get_posts( array(
-			'post_type'      => 'peptide',
-			'post_status'    => 'publish',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-			'meta_query'     => array(
-				'relation' => 'OR',
-				array( 'key' => 'psa_half_life', 'compare' => 'NOT EXISTS' ),
-				array( 'key' => 'psa_half_life', 'value' => '' ),
-			),
-		) );
+		$posts = get_posts(
+			array(
+				'post_type'      => 'peptide',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'meta_query'     => array(
+					'relation' => 'OR',
+					array(
+						'key'     => 'psa_half_life',
+						'compare' => 'NOT EXISTS',
+					),
+					array(
+						'key'   => 'psa_half_life',
+						'value' => '',
+					),
+				),
+			)
+		);
 
 		$daily_key   = 'psa_daily_gen_' . gmdate( 'Y-m-d' );
 		$daily_count = (int) get_transient( $daily_key );
@@ -226,7 +249,12 @@ class PSA_Admin {
 			}
 
 			update_post_meta( $post_id, 'psa_source', 'pending' );
-			wp_update_post( array( 'ID' => $post_id, 'post_status' => 'draft' ) );
+			wp_update_post(
+				array(
+					'ID'          => $post_id,
+					'post_status' => 'draft',
+				)
+			);
 			update_post_meta( $post_id, 'psa_generation_started', time() );
 
 			$args = array( $post_id, $post->post_title );
@@ -234,7 +262,7 @@ class PSA_Admin {
 				// Stagger 30s apart to avoid rate-limit hammering.
 				wp_schedule_single_event( time() + ( $queued * 30 ), 'psa_generate_peptide_background', $args );
 			}
-			$queued++;
+			++$queued;
 		}
 
 		set_transient( $daily_key, $daily_count + $queued, DAY_IN_SECONDS );
@@ -262,29 +290,38 @@ class PSA_Admin {
 	// ── Backward-compatible proxies (rendering moved to PSA_Admin_Page) ─
 
 	/** @see PSA_Admin_Page::enqueue_batch_scripts() */
-	public static function enqueue_batch_scripts( string $hook ): void { PSA_Admin_Page::enqueue_batch_scripts( $hook ); }
+	public static function enqueue_batch_scripts( string $hook ): void {
+		PSA_Admin_Page::enqueue_batch_scripts( $hook ); }
 
 	/** @see PSA_Admin_Page::render_section_description() */
-	public static function render_section_description(): void { PSA_Admin_Page::render_section_description(); }
+	public static function render_section_description(): void {
+		PSA_Admin_Page::render_section_description(); }
 
 	/** @see PSA_Admin_Page::render_api_key_field() */
-	public static function render_api_key_field(): void { PSA_Admin_Page::render_api_key_field(); }
+	public static function render_api_key_field(): void {
+		PSA_Admin_Page::render_api_key_field(); }
 
 	/** @see PSA_Admin_Page::render_model_field() */
-	public static function render_model_field(): void { PSA_Admin_Page::render_model_field(); }
+	public static function render_model_field(): void {
+		PSA_Admin_Page::render_model_field(); }
 
 	/** @see PSA_Admin_Page::render_validation_model_field() */
-	public static function render_validation_model_field(): void { PSA_Admin_Page::render_validation_model_field(); }
+	public static function render_validation_model_field(): void {
+		PSA_Admin_Page::render_validation_model_field(); }
 
 	/** @see PSA_Admin_Page::render_publish_field() */
-	public static function render_publish_field(): void { PSA_Admin_Page::render_publish_field(); }
+	public static function render_publish_field(): void {
+		PSA_Admin_Page::render_publish_field(); }
 
 	/** @see PSA_Admin_Page::render_pubchem_field() */
-	public static function render_pubchem_field(): void { PSA_Admin_Page::render_pubchem_field(); }
+	public static function render_pubchem_field(): void {
+		PSA_Admin_Page::render_pubchem_field(); }
 
 	/** @see PSA_Admin_Page::render_budget_field() */
-	public static function render_budget_field(): void { PSA_Admin_Page::render_budget_field(); }
+	public static function render_budget_field(): void {
+		PSA_Admin_Page::render_budget_field(); }
 
 	/** @see PSA_Admin_Page::render_settings_page() */
-	public static function render_settings_page(): void { PSA_Admin_Page::render_settings_page(); }
+	public static function render_settings_page(): void {
+		PSA_Admin_Page::render_settings_page(); }
 }

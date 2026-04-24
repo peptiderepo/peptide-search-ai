@@ -35,7 +35,11 @@ class PSA_AI_Generator {
 	 */
 	public static function validate_peptide_name( string $name ) {
 		if ( ! self::validate_peptide_input( $name ) ) {
-			return array( 'is_valid' => false, 'canonical_name' => $name, 'reason' => 'Invalid characters in peptide name.' );
+			return array(
+				'is_valid'       => false,
+				'canonical_name' => $name,
+				'reason'         => 'Invalid characters in peptide name.',
+			);
 		}
 
 		$options = self::get_settings();
@@ -70,7 +74,11 @@ class PSA_AI_Generator {
 
 		$data = PSA_OpenRouter::parse_response( $response );
 		if ( is_wp_error( $data ) ) {
-			return array( 'is_valid' => false, 'canonical_name' => $name, 'reason' => 'Could not verify this peptide name.' );
+			return array(
+				'is_valid'       => false,
+				'canonical_name' => $name,
+				'reason'         => 'Could not verify this peptide name.',
+			);
 		}
 
 		$result = array(
@@ -136,12 +144,15 @@ class PSA_AI_Generator {
 		}
 
 		$post_status   = ( 'publish' === $options['auto_publish'] ) ? 'publish' : 'draft';
-		$update_result = wp_update_post( array(
-			'ID'           => $post_id,
-			'post_title'   => sanitize_text_field( $result['name'] ?? $peptide_name ),
-			'post_content' => wp_kses_post( $post_content ),
-			'post_status'  => $post_status,
-		), true );
+		$update_result = wp_update_post(
+			array(
+				'ID'           => $post_id,
+				'post_title'   => sanitize_text_field( $result['name'] ?? $peptide_name ),
+				'post_content' => wp_kses_post( $post_content ),
+				'post_status'  => $post_status,
+			),
+			true
+		);
 
 		if ( is_wp_error( $update_result ) ) {
 			error_log( 'PSA: wp_update_post FAILED for post ' . $post_id . ': ' . $update_result->get_error_message() );
@@ -214,8 +225,14 @@ class PSA_AI_Generator {
 		$gen_cost   = PSA_Cost_Tracker::estimate_cost( $generation_model, $gen_tokens, PSA_Config::GENERATION_MAX_TOKENS );
 
 		return array(
-			'validation'               => array( 'tokens' => $val_tokens + PSA_Config::VALIDATION_MAX_TOKENS, 'estimated_cost_usd' => $val_cost ),
-			'generation'               => array( 'tokens' => $gen_tokens + PSA_Config::GENERATION_MAX_TOKENS, 'estimated_cost_usd' => $gen_cost ),
+			'validation'               => array(
+				'tokens'             => $val_tokens + PSA_Config::VALIDATION_MAX_TOKENS,
+				'estimated_cost_usd' => $val_cost,
+			),
+			'generation'               => array(
+				'tokens'             => $gen_tokens + PSA_Config::GENERATION_MAX_TOKENS,
+				'estimated_cost_usd' => $gen_cost,
+			),
 			'total_estimated_cost_usd' => $val_cost + $gen_cost,
 		);
 	}
@@ -228,7 +245,13 @@ class PSA_AI_Generator {
 	 * @return array
 	 */
 	private static function get_settings(): array {
-		$defaults = array( 'api_key' => '', 'ai_model' => '', 'validation_model' => '', 'auto_publish' => 'draft', 'use_pubchem' => '1' );
+		$defaults = array(
+			'api_key'          => '',
+			'ai_model'         => '',
+			'validation_model' => '',
+			'auto_publish'     => 'draft',
+			'use_pubchem'      => '1',
+		);
 		$settings = wp_parse_args( get_option( 'psa_settings', array() ), $defaults );
 
 		if ( ! empty( $settings['api_key'] ) && ! ( defined( 'PSA_OPENROUTER_KEY' ) && PSA_OPENROUTER_KEY ) ) {
@@ -269,14 +292,18 @@ class PSA_AI_Generator {
 	// ── Backward-compatible proxies ─────────────────────────────────────
 
 	/** @see PSA_AI_Content::build_validation_prompt() */
-	public static function build_validation_prompt( string $name ): string { return PSA_AI_Content::build_validation_prompt( $name ); }
+	public static function build_validation_prompt( string $name ): string {
+		return PSA_AI_Content::build_validation_prompt( $name ); }
 
 	/** @see PSA_AI_Content::build_generation_prompt() */
-	public static function build_generation_prompt( string $peptide_name ): string { return PSA_AI_Content::build_generation_prompt( $peptide_name ); }
+	public static function build_generation_prompt( string $peptide_name ): string {
+		return PSA_AI_Content::build_generation_prompt( $peptide_name ); }
 
 	/** @see PSA_AI_Content::save_peptide_meta() */
-	public static function save_peptide_meta( int $post_id, array $ai_data, ?array $pubchem_data ): void { PSA_AI_Content::save_peptide_meta( $post_id, $ai_data, $pubchem_data ); }
+	public static function save_peptide_meta( int $post_id, array $ai_data, ?array $pubchem_data ): void {
+		PSA_AI_Content::save_peptide_meta( $post_id, $ai_data, $pubchem_data ); }
 
 	/** @see PSA_AI_Content::assign_category_term() */
-	public static function assign_category_term( int $post_id, array $ai_data ): void { PSA_AI_Content::assign_category_term( $post_id, $ai_data ); }
+	public static function assign_category_term( int $post_id, array $ai_data ): void {
+		PSA_AI_Content::assign_category_term( $post_id, $ai_data ); }
 }

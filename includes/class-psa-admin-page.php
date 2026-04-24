@@ -29,10 +29,14 @@ class PSA_Admin_Page {
 		}
 
 		wp_enqueue_script( 'psa-batch-enrich', PSA_PLUGIN_URL . 'assets/js/psa-batch-enrich.js', array( 'jquery' ), PSA_VERSION, true );
-		wp_localize_script( 'psa-batch-enrich', 'psaBatchEnrich', array(
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'psa_batch_enrich' ),
-		) );
+		wp_localize_script(
+			'psa-batch-enrich',
+			'psaBatchEnrich',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'psa_batch_enrich' ),
+			)
+		);
 	}
 
 	// ── Field renderers ─────────────────────────────────────────────────
@@ -119,7 +123,11 @@ class PSA_Admin_Page {
 			<h1><?php esc_html_e( 'Peptide Search AI Settings', 'peptide-search-ai' ); ?></h1>
 
 			<form method="post" action="options.php">
-				<?php settings_fields( 'psa_settings_group' ); do_settings_sections( 'peptide-search-ai' ); submit_button(); ?>
+				<?php
+				settings_fields( 'psa_settings_group' );
+				do_settings_sections( 'peptide-search-ai' );
+				submit_button();
+				?>
 			</form>
 
 			<hr />
@@ -168,12 +176,12 @@ class PSA_Admin_Page {
 
 	/** Render the API usage summary section with recent call log. */
 	private static function render_usage_summary(): void {
-		$current_spend   = PSA_Cost_Tracker::get_monthly_spend();
-		$current_tokens  = PSA_Cost_Tracker::get_monthly_tokens();
-		$estimated_count = PSA_Cost_Tracker::get_monthly_estimated_count();
-		$budget          = floatval( PSA_Admin::get_setting( 'monthly_budget', PSA_Config::DEFAULT_MONTHLY_BUDGET ) );
+		$current_spend    = PSA_Cost_Tracker::get_monthly_spend();
+		$current_tokens   = PSA_Cost_Tracker::get_monthly_tokens();
+		$estimated_count  = PSA_Cost_Tracker::get_monthly_estimated_count();
+		$budget           = floatval( PSA_Admin::get_setting( 'monthly_budget', PSA_Config::DEFAULT_MONTHLY_BUDGET ) );
 		$budget_remaining = ( 0.0 === $budget ) ? __( 'Unlimited', 'peptide-search-ai' ) : '$' . number_format( max( 0, $budget - $current_spend ), 2 );
-		$recent_logs     = PSA_Cost_Tracker::get_recent_logs( 20 );
+		$recent_logs      = PSA_Cost_Tracker::get_recent_logs( 20 );
 		?>
 		<div style="background:#f5f5f5;padding:15px;border-radius:4px;margin-bottom:20px;">
 			<h3><?php esc_html_e( 'This Month', 'peptide-search-ai' ); ?></h3>
@@ -216,6 +224,7 @@ class PSA_Admin_Page {
 					<?php endforeach; ?>
 				</tbody>
 			</table>
-		<?php endif;
+			<?php
+		endif;
 	}
 }

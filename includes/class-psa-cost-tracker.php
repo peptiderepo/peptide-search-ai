@@ -158,14 +158,18 @@ class PSA_Cost_Tracker {
 	// ── Backward-compatible proxies (reporting moved to PSA_Cost_Reporter) ──
 
 	/** @see PSA_Cost_Reporter::get_monthly_spend() */
-	public static function get_monthly_spend( ?int $year = null, ?int $month = null ): float { return PSA_Cost_Reporter::get_monthly_spend( $year, $month ); }
+	public static function get_monthly_spend( ?int $year = null, ?int $month = null ): float {
+		return PSA_Cost_Reporter::get_monthly_spend( $year, $month ); }
 
 	/** @see PSA_Cost_Reporter::get_monthly_tokens() */
-	public static function get_monthly_tokens( ?int $year = null, ?int $month = null ): int { return PSA_Cost_Reporter::get_monthly_tokens( $year, $month ); }
+	public static function get_monthly_tokens( ?int $year = null, ?int $month = null ): int {
+		return PSA_Cost_Reporter::get_monthly_tokens( $year, $month ); }
 
 	/** @see PSA_Cost_Reporter::get_monthly_estimated_count() */
-	public static function get_monthly_estimated_count( ?int $year = null, ?int $month = null ): int { return PSA_Cost_Reporter::get_monthly_estimated_count( $year, $month ); }
+	public static function get_monthly_estimated_count( ?int $year = null, ?int $month = null ): int {
+		return PSA_Cost_Reporter::get_monthly_estimated_count( $year, $month ); }
 
 	/** @see PSA_Cost_Reporter::get_recent_logs() */
-	public static function get_recent_logs( int $limit = 20 ): array { return PSA_Cost_Reporter::get_recent_logs( $limit ); }
+	public static function get_recent_logs( int $limit = 20 ): array {
+		return PSA_Cost_Reporter::get_recent_logs( $limit ); }
 }

@@ -40,7 +40,12 @@ class PSA_Search_Handler {
 		$results = PSA_Search::search_peptides( $query );
 
 		if ( ! empty( $results['results'] ) ) {
-			wp_send_json_success( array( 'status' => 'found', 'data' => $results ) );
+			wp_send_json_success(
+				array(
+					'status' => 'found',
+					'data'   => $results,
+				)
+			);
 			return;
 		}
 
@@ -53,7 +58,12 @@ class PSA_Search_Handler {
 
 		// 3. Check rate limit before attempting new generation.
 		if ( ! self::check_rate_limit() ) {
-			wp_send_json_success( array( 'status' => 'rate_limited', 'message' => 'Too many requests. Please try again later.' ) );
+			wp_send_json_success(
+				array(
+					'status'  => 'rate_limited',
+					'message' => 'Too many requests. Please try again later.',
+				)
+			);
 			return;
 		}
 
@@ -78,10 +88,12 @@ class PSA_Search_Handler {
 				error_log( 'PSA: Max retries (' . PSA_Config::MAX_GENERATION_RETRIES . ') exceeded for "' . $pending->post_title . '" (post ' . $pending->ID . '). Marking as failed.' );
 				update_post_meta( $pending->ID, 'psa_source', 'failed' );
 				update_post_meta( $pending->ID, 'psa_generation_error', 'Generation failed after ' . PSA_Config::MAX_GENERATION_RETRIES . ' attempts.' );
-				wp_send_json_success( array(
-					'status'  => 'invalid',
-					'message' => 'We were unable to generate content for this peptide. Please try again later.',
-				) );
+				wp_send_json_success(
+					array(
+						'status'  => 'invalid',
+						'message' => 'We were unable to generate content for this peptide. Please try again later.',
+					)
+				);
 				return;
 			}
 
@@ -91,7 +103,12 @@ class PSA_Search_Handler {
 			self::schedule_background_generation( $pending->ID, $pending->post_title );
 		}
 
-		wp_send_json_success( array( 'status' => 'pending', 'peptide_name' => $pending->post_title ) );
+		wp_send_json_success(
+			array(
+				'status'       => 'pending',
+				'peptide_name' => $pending->post_title,
+			)
+		);
 	}
 
 	/**
@@ -124,10 +141,12 @@ class PSA_Search_Handler {
 		$daily_key   = 'psa_daily_gen_' . gmdate( 'Y-m-d' );
 		$daily_count = (int) get_transient( $daily_key );
 		if ( $daily_count >= PSA_Config::DAILY_GENERATION_CAP ) {
-			wp_send_json_success( array(
-				'status'  => 'rate_limited',
-				'message' => 'Our system has reached its daily limit for adding new peptides. Please try again tomorrow.',
-			) );
+			wp_send_json_success(
+				array(
+					'status'  => 'rate_limited',
+					'message' => 'Our system has reached its daily limit for adding new peptides. Please try again tomorrow.',
+				)
+			);
 			return;
 		}
 
@@ -135,14 +154,21 @@ class PSA_Search_Handler {
 
 		if ( is_wp_error( $validation ) ) {
 			error_log( 'PSA: Validation error for "' . $query . '": ' . $validation->get_error_message() );
-			wp_send_json_success( array( 'status' => 'invalid', 'message' => 'Could not verify this peptide name.' ) );
+			wp_send_json_success(
+				array(
+					'status'  => 'invalid',
+					'message' => 'Could not verify this peptide name.',
+				)
+			);
 		}
 
 		if ( empty( $validation['is_valid'] ) ) {
-			wp_send_json_success( array(
-				'status'  => 'invalid',
-				'message' => $validation['reason'] ?? 'This does not appear to be a recognized peptide.',
-			) );
+			wp_send_json_success(
+				array(
+					'status'  => 'invalid',
+					'message' => $validation['reason'] ?? 'This does not appear to be a recognized peptide.',
+				)
+			);
 		}
 
 		// Valid peptide — increment rate limit and create placeholder.
@@ -165,7 +191,12 @@ class PSA_Search_Handler {
 		error_log( 'PSA: Scheduling async generation for "' . $canonical_name . '" (post ' . $placeholder_id . ')' );
 		self::schedule_background_generation( $placeholder_id, $canonical_name );
 
-		wp_send_json_success( array( 'status' => 'pending', 'peptide_name' => $canonical_name ) );
+		wp_send_json_success(
+			array(
+				'status'       => 'pending',
+				'peptide_name' => $canonical_name,
+			)
+		);
 	}
 
 	/**

@@ -210,7 +210,7 @@ class PSA_Template {
 				'class' => 'psa-badge-manual',
 			),
 		);
-		$badge = $badges[ $source ] ?? $badges['ai-generated'];
+		$badge  = $badges[ $source ] ?? $badges['ai-generated'];
 
 		$html  = '<div class="psa-source-badge ' . esc_attr( $badge['class'] ) . '">';
 		$html .= esc_html( $badge['label'] );

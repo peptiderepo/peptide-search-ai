@@ -38,57 +38,66 @@ class PSA_Directory {
 	 * @return string HTML output.
 	 */
 	public static function render_shortcode( $atts ): string {
-		$terms = get_terms( array(
-			'taxonomy'   => 'peptide_category',
-			'hide_empty' => false,
-			'orderby'    => 'name',
-			'order'      => 'ASC',
-		) );
+		$terms = get_terms(
+			array(
+				'taxonomy'   => 'peptide_category',
+				'hide_empty' => false,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
+			)
+		);
 
 		$categories = array();
 		if ( ! is_wp_error( $terms ) ) {
 			foreach ( $terms as $term ) {
-				$categories[] = array( 'slug' => $term->slug, 'name' => $term->name );
+				$categories[] = array(
+					'slug' => $term->slug,
+					'name' => $term->name,
+				);
 			}
 		}
 
-		wp_localize_script( 'psa-directory', 'psaDirectory', array(
-			'restUrl'    => esc_url_raw( rest_url( 'peptide-search-ai/v1/compounds' ) ),
-			'nonce'      => wp_create_nonce( 'wp_rest' ),
-			'categories' => $categories,
-			'perPage'    => self::PER_PAGE_DEFAULT,
-			'i18n'       => array(
-				'title'            => __( 'Peptide Directory', 'peptide-search-ai' ),
-				'subtitle'         => __( 'Browse reagents with detailed research parameters.', 'peptide-search-ai' ),
-				'searchPlaceholder' => __( 'Search peptides...', 'peptide-search-ai' ),
-				'showAll'          => __( 'Show All', 'peptide-search-ai' ),
-				'loadMore'         => __( 'Load More', 'peptide-search-ai' ),
-				'loading'          => __( 'Loading...', 'peptide-search-ai' ),
-				'noResults'        => __( 'No peptides found matching your criteria.', 'peptide-search-ai' ),
-				'viewDetails'      => __( 'View Research Details', 'peptide-search-ai' ),
-				'viewFullPage'     => __( 'View Full Page', 'peptide-search-ai' ),
-				'close'            => __( 'Close', 'peptide-search-ai' ),
-				'halfLife'         => __( 'Half-Life', 'peptide-search-ai' ),
-				'stability'        => __( 'Stability', 'peptide-search-ai' ),
-				'solubility'       => __( 'Solubility', 'peptide-search-ai' ),
-				'vialSize'         => __( 'Vial Size', 'peptide-search-ai' ),
-				'storageLyo'       => __( 'Storage (Lyophilized)', 'peptide-search-ai' ),
-				'storageRecon'     => __( 'Storage (Reconstituted)', 'peptide-search-ai' ),
-				'molecularWeight'  => __( 'Molecular Weight', 'peptide-search-ai' ),
-				'formula'          => __( 'Formula', 'peptide-search-ai' ),
-				'typicalDose'      => __( 'Typical Dose', 'peptide-search-ai' ),
-				'cycleParams'      => __( 'Cycle Parameters', 'peptide-search-ai' ),
-				'sequence'         => __( 'Sequence', 'peptide-search-ai' ),
-				'singleReagents'   => __( 'Single Reagents', 'peptide-search-ai' ),
-				'protocolModels'   => __( 'Protocol Models', 'peptide-search-ai' ),
-				'comingSoon'       => __( 'Coming Soon', 'peptide-search-ai' ),
-				'researchParams'   => __( 'Research Parameters', 'peptide-search-ai' ),
-				'communityObs'     => __( 'Community Observations', 'peptide-search-ai' ),
-				'pubchemLink'      => __( 'View on PubChem', 'peptide-search-ai' ),
-				'copySequence'     => __( 'Copy', 'peptide-search-ai' ),
-				'copied'           => __( 'Copied!', 'peptide-search-ai' ),
-			),
-		) );
+		wp_localize_script(
+			'psa-directory',
+			'psaDirectory',
+			array(
+				'restUrl'    => esc_url_raw( rest_url( 'peptide-search-ai/v1/compounds' ) ),
+				'nonce'      => wp_create_nonce( 'wp_rest' ),
+				'categories' => $categories,
+				'perPage'    => self::PER_PAGE_DEFAULT,
+				'i18n'       => array(
+					'title'             => __( 'Peptide Directory', 'peptide-search-ai' ),
+					'subtitle'          => __( 'Browse reagents with detailed research parameters.', 'peptide-search-ai' ),
+					'searchPlaceholder' => __( 'Search peptides...', 'peptide-search-ai' ),
+					'showAll'           => __( 'Show All', 'peptide-search-ai' ),
+					'loadMore'          => __( 'Load More', 'peptide-search-ai' ),
+					'loading'           => __( 'Loading...', 'peptide-search-ai' ),
+					'noResults'         => __( 'No peptides found matching your criteria.', 'peptide-search-ai' ),
+					'viewDetails'       => __( 'View Research Details', 'peptide-search-ai' ),
+					'viewFullPage'      => __( 'View Full Page', 'peptide-search-ai' ),
+					'close'             => __( 'Close', 'peptide-search-ai' ),
+					'halfLife'          => __( 'Half-Life', 'peptide-search-ai' ),
+					'stability'         => __( 'Stability', 'peptide-search-ai' ),
+					'solubility'        => __( 'Solubility', 'peptide-search-ai' ),
+					'vialSize'          => __( 'Vial Size', 'peptide-search-ai' ),
+					'storageLyo'        => __( 'Storage (Lyophilized)', 'peptide-search-ai' ),
+					'storageRecon'      => __( 'Storage (Reconstituted)', 'peptide-search-ai' ),
+					'molecularWeight'   => __( 'Molecular Weight', 'peptide-search-ai' ),
+					'formula'           => __( 'Formula', 'peptide-search-ai' ),
+					'typicalDose'       => __( 'Typical Dose', 'peptide-search-ai' ),
+					'cycleParams'       => __( 'Cycle Parameters', 'peptide-search-ai' ),
+					'sequence'          => __( 'Sequence', 'peptide-search-ai' ),
+					'singleReagents'    => __( 'Single Reagents', 'peptide-search-ai' ),
+					'protocolModels'    => __( 'Protocol Models', 'peptide-search-ai' ),
+					'comingSoon'        => __( 'Coming Soon', 'peptide-search-ai' ),
+					'researchParams'    => __( 'Research Parameters', 'peptide-search-ai' ),
+					'communityObs'      => __( 'Community Observations', 'peptide-search-ai' ),
+					'pubchemLink'       => __( 'View on PubChem', 'peptide-search-ai' ),
+					'copySequence'      => __( 'Copy', 'peptide-search-ai' ),
+					'copied'            => __( 'Copied!', 'peptide-search-ai' ),
+				),
+			)
+		);
 
 		ob_start();
 		?>
@@ -104,11 +113,14 @@ class PSA_Directory {
 	// ── Backward-compatible proxies (REST moved to PSA_Directory_API) ───
 
 	/** @see PSA_Directory_API::register_rest_routes() */
-	public static function register_rest_routes(): void { PSA_Directory_API::register_rest_routes(); }
+	public static function register_rest_routes(): void {
+		PSA_Directory_API::register_rest_routes(); }
 
 	/** @see PSA_Directory_API::rest_compounds() */
-	public static function rest_compounds( $request ) { return PSA_Directory_API::rest_compounds( $request ); }
+	public static function rest_compounds( $request ) {
+		return PSA_Directory_API::rest_compounds( $request ); }
 
 	/** @see PSA_Directory_API::format_compound() */
-	public static function format_compound( $post, string $fields = 'full' ): array { return PSA_Directory_API::format_compound( $post, $fields ); }
+	public static function format_compound( $post, string $fields = 'full' ): array {
+		return PSA_Directory_API::format_compound( $post, $fields ); }
 }
