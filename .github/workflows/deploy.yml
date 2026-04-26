@@ -74,10 +74,18 @@ jobs:
         if: always()
         run: rm -f ~/.ssh/deploy_key
 
+  smoke:
+    name: Smoke tests (staging)
+    needs: deploy-staging
+    uses: peptiderepo/peptide-e2e/.github/workflows/smoke.yml@main
+    secrets:
+      STAGING_WP_ADMIN_USER: ${{ secrets.STAGING_WP_ADMIN_USER }}
+      STAGING_WP_ADMIN_PASSWORD: ${{ secrets.STAGING_WP_ADMIN_PASSWORD }}
+
   sync-deploy-branch:
     name: Sync deploy branch
     runs-on: ubuntu-latest
-    needs: [test, validate, deploy-staging]
+    needs: [test, validate, deploy-staging, smoke]
     environment: production
     steps:
       - uses: actions/checkout@v4
