@@ -5,6 +5,12 @@ All notable changes to the Peptide Search AI plugin will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0] — 2026-04-26
+
+### Changed
+- `assets/css/peptide-search.css`: adopted brand tokens — replaced hardcoded `#2563eb` blue with `var(--teal-500)` family; font → Inter / IBM Plex Mono
+- `assets/css/psa-directory.css`: same token adoption; active tabs/filters → teal; dark mode active states → teal
+
 ## [4.5.1] - 2026-04-23
 
 ### Changed

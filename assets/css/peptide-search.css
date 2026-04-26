@@ -6,7 +6,7 @@
 .psa-search-wrap {
     max-width: 720px;
     margin: 2rem auto;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .psa-search-form {
@@ -16,15 +16,15 @@
 .psa-search-input-wrap {
     display: flex;
     gap: 0;
-    border: 2px solid #2563eb;
+    border: 2px solid var(--teal-500);
     border-radius: 8px;
     overflow: hidden;
     transition: border-color 0.2s;
 }
 
 .psa-search-input-wrap:focus-within {
-    border-color: #1d4ed8;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    border-color: var(--teal-600);
+    box-shadow: 0 0 0 3px rgba(27, 138, 146, 0.15);
 }
 
 .psa-search-input {
@@ -42,13 +42,13 @@
 }
 
 .psa-search-input:focus {
-    outline: 2px solid #2563eb;
+    outline: 2px solid var(--teal-500);
     outline-offset: 2px;
 }
 
 .psa-search-btn {
     padding: 14px 24px;
-    background: #2563eb;
+    background: var(--teal-500);
     color: #fff;
     border: none;
     font-size: 15px;
@@ -59,7 +59,7 @@
 }
 
 .psa-search-btn:hover {
-    background: #1d4ed8;
+    background: var(--teal-600);
 }
 
 .psa-search-btn:focus-visible {
@@ -95,8 +95,8 @@
 }
 
 .psa-result-item:hover {
-    border-color: #2563eb;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    border-color: var(--teal-500);
+    box-shadow: 0 2px 8px rgba(27, 138, 146, 0.1);
 }
 
 .psa-result-title {
@@ -146,8 +146,8 @@
 }
 
 .psa-badge-manual {
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--teal-100);
+    color: var(--teal-700);
 }
 
 /* --- Checking / Loading State --- */
@@ -174,8 +174,8 @@
     display: inline-block;
     width: 36px;
     height: 36px;
-    border: 4px solid #bfdbfe;
-    border-top-color: #2563eb;
+    border: 4px solid var(--teal-100);
+    border-top-color: var(--teal-500);
     border-radius: 50%;
     animation: psa-spin 0.8s linear infinite;
 }
@@ -192,8 +192,8 @@
 .psa-pending-inner {
     text-align: center;
     padding: 40px 32px;
-    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
-    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, var(--teal-50) 0%, var(--teal-50) 100%);
+    border: 1px solid var(--teal-100);
     border-radius: 16px;
 }
 
@@ -206,14 +206,14 @@
 .psa-pending-inner h3 {
     margin: 0 0 12px;
     font-size: 21px;
-    color: #1e40af;
+    color: var(--teal-700);
     font-weight: 700;
 }
 
 .psa-pending-inner > p {
     margin: 0 0 28px;
     font-size: 15px;
-    color: #3b82f6;
+    color: var(--teal-400);
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
@@ -312,7 +312,7 @@
 }
 
 .psa-sequence {
-    font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+    font-family: "IBM Plex Mono", "Fira Code", Menlo, Consolas, monospace;
     font-size: 13px;
     word-break: break-all;
     background: #f1f5f9;
@@ -330,7 +330,7 @@
     color: #1e293b;
     margin: 0 0 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #2563eb;
+    border-bottom: 2px solid var(--teal-500);
 }
 
 .psa-section-content {
@@ -360,9 +360,9 @@
 }
 
 .psa-source-badge.psa-badge-manual {
-    background: #eff6ff;
+    background: var(--teal-50);
     border: 1px solid #93c5fd;
-    color: #1e40af;
+    color: var(--teal-700);
 }
 
 /* --- Responsive --- */
