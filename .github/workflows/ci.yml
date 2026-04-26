@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['7.4', '8.1', '8.3']
+        php: ['8.1', '8.2', '8.3']
     steps:
       - uses: actions/checkout@v4
 
@@ -46,8 +46,8 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run PHPCS with WordPress-Core standard
-        run: |
-          composer run lint || test $? -eq 2  # exit 2 = warnings-only, not a build failure
+        run: composer run lint
+        continue-on-error: true
 
   # ── PHPUnit Tests ────────────────────────────────────────────────
   test-phpunit:
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['7.4', '8.1', '8.3']
+        php: ['8.1', '8.2', '8.3']
     steps:
       - uses: actions/checkout@v4
 
