@@ -43,7 +43,7 @@ peptide-search-ai/
 │       └── psa-directory.css          Directory card grid, filter pills, modal styles, dark mode support
 │
 └── .github/workflows/
-    ├── ci.yml                         PHP lint, PHPCS, JS syntax checks on PR/push
+    ├── ci.yml                         Thin caller → peptide-e2e reusable CI (stubs, has_js:true); blocking PHPCS + 300-line rule
     └── deploy.yml                     Pre-deploy validation, orphan deploy branch sync, SSH deploy
 ```
 

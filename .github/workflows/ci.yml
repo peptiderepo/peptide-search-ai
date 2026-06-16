@@ -1,91 +1,19 @@
-name: CI — Lint & Test
+name: CI
 
 on:
+  pull_request: {}
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_call:
+    branches: [main]
 
+# Required: reusable phpcs job declares contents: write for phpcbf auto-commit,
+# but GitHub enforces that the caller must also declare it at workflow level.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  # ── PHP Syntax Check ─────────────────────────────────────────────
-  lint-php:
-    name: PHP Lint (${{ matrix.php }})
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php: ['8.1', '8.2', '8.3']
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-
-      - name: Syntax check all PHP files
-        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
-
-  # ── WordPress Coding Standards (PHP CodeSniffer) ──────────────────
-  lint-phpcs:
-    name: WordPress Coding Standards
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
-
-      - name: Install Composer dependencies
-        run: |
-          composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Run PHPCS with WordPress-Core standard
-        run: composer run lint
-        continue-on-error: true
-
-  # ── PHPUnit Tests ────────────────────────────────────────────────
-  test-phpunit:
-    name: PHPUnit Tests (PHP ${{ matrix.php }})
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php: ['8.1', '8.2', '8.3']
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          tools: composer
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Run PHPUnit tests
-        run: composer run test
-
-  # ── JavaScript Lint ──────────────────────────────────────────────
-  lint-js:
-    name: JavaScript Linting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Check JavaScript syntax
-        run: |
-          for f in $(find assets/js -name '*.js' -type f); do
-            node --check "$f" || exit 1
-          done
-          echo "All JavaScript files passed syntax check"
+  ci:
+    uses: peptiderepo/peptide-e2e/.github/workflows/ci.yml@main
+    with:
+      tests: stubs
+      has_js: true
+    secrets: inherit

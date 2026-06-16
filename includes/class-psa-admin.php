@@ -287,41 +287,4 @@ class PSA_Admin {
 		return $options[ $key ] ?? $default;
 	}
 
-	// ── Backward-compatible proxies (rendering moved to PSA_Admin_Page) ─
-
-	/** @see PSA_Admin_Page::enqueue_batch_scripts() */
-	public static function enqueue_batch_scripts( string $hook ): void {
-		PSA_Admin_Page::enqueue_batch_scripts( $hook ); }
-
-	/** @see PSA_Admin_Page::render_section_description() */
-	public static function render_section_description(): void {
-		PSA_Admin_Page::render_section_description(); }
-
-	/** @see PSA_Admin_Page::render_api_key_field() */
-	public static function render_api_key_field(): void {
-		PSA_Admin_Page::render_api_key_field(); }
-
-	/** @see PSA_Admin_Page::render_model_field() */
-	public static function render_model_field(): void {
-		PSA_Admin_Page::render_model_field(); }
-
-	/** @see PSA_Admin_Page::render_validation_model_field() */
-	public static function render_validation_model_field(): void {
-		PSA_Admin_Page::render_validation_model_field(); }
-
-	/** @see PSA_Admin_Page::render_publish_field() */
-	public static function render_publish_field(): void {
-		PSA_Admin_Page::render_publish_field(); }
-
-	/** @see PSA_Admin_Page::render_pubchem_field() */
-	public static function render_pubchem_field(): void {
-		PSA_Admin_Page::render_pubchem_field(); }
-
-	/** @see PSA_Admin_Page::render_budget_field() */
-	public static function render_budget_field(): void {
-		PSA_Admin_Page::render_budget_field(); }
-
-	/** @see PSA_Admin_Page::render_settings_page() */
-	public static function render_settings_page(): void {
-		PSA_Admin_Page::render_settings_page(); }
 }

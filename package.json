@@ -1,0 +1,8 @@
+{
+  "name": "peptide-search-ai",
+  "version": "4.7.0",
+  "description": "Peptide Search AI WordPress plugin — JS assets",
+  "private": true,
+  "scripts": {},
+  "devDependencies": {}
+}

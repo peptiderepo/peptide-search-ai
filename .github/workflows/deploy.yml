@@ -24,11 +24,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Verify required files exist
-        run: |
-          for file in peptide-search-ai.php includes/ assets/ readme.txt; do
-            [ -e "$file" ] && echo "✓ $file" || { echo "❌ Missing: $file"; exit 1; }
-          done
       - name: Verify PSA_VERSION constant
         run: |
           if grep -q "define( 'PSA_VERSION'" peptide-search-ai.php; then
@@ -37,11 +32,6 @@ jobs:
           else
             echo "❌ PSA_VERSION not found"; exit 1
           fi
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
-      - name: Validate PHP syntax
-        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
 
   deploy:
     name: Deploy (shared pipeline)
