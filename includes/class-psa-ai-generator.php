@@ -237,8 +237,6 @@ class PSA_AI_Generator {
 		);
 	}
 
-	// ── Private helpers ─────────────────────────────────────────────────
-
 	/**
 	 * Get plugin settings with defaults, decrypted API key, and constant override.
 	 *
@@ -287,5 +285,15 @@ class PSA_AI_Generator {
 			}
 		}
 		return true;
+	}
+
+	/** @see PSA_AI_Content::build_validation_prompt() — kept for test reflection. */
+	public static function build_validation_prompt( string $name ): string {
+		return PSA_AI_Content::build_validation_prompt( $name );
+	}
+
+	/** @see PSA_AI_Content::build_generation_prompt() — kept for test reflection. */
+	public static function build_generation_prompt( string $peptide_name ): string {
+		return PSA_AI_Content::build_generation_prompt( $peptide_name );
 	}
 }
