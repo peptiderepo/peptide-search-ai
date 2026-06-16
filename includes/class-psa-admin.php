@@ -286,5 +286,4 @@ class PSA_Admin {
 		$options = get_option( 'psa_settings', array() );
 		return $options[ $key ] ?? $default;
 	}
-
 }

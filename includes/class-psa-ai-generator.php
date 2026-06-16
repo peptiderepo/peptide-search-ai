@@ -288,5 +288,4 @@ class PSA_AI_Generator {
 		}
 		return true;
 	}
-
 }

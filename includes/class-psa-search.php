@@ -290,5 +290,4 @@ class PSA_Search {
 			'source'            => get_post_meta( $post->ID, 'psa_source', true ),
 		);
 	}
-
 }
