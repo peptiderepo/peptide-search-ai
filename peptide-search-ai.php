@@ -3,7 +3,7 @@
  * Plugin Name: Peptide Search AI
  * Plugin URI:  https://github.com/peptiderepo/peptide-search-ai
  * Description: Searchable peptide database with AI-powered auto-population and browsable directory.
- * Version:     4.6.0
+ * Version:     4.7.0
  * Author:      peptiderepo
  * License:     GPL v2 or later
  * Text Domain: peptide-search-ai
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PSA_VERSION', '4.5.0' );
+define( 'PSA_VERSION', '4.7.0' );
 define( 'PSA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PSA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PSA_PLUGIN_FILE', __FILE__ );

@@ -5,6 +5,17 @@ All notable changes to the Peptide Search AI plugin will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.0] — 2026-06-16
+
+### Changed
+- `.github/workflows/ci.yml`: replaced per-repo CI jobs with thin caller for the reusable `peptiderepo/peptide-e2e/.github/workflows/ci.yml@main` (tests: stubs, has_js: true). Adds blocking PHPCS, 300-line file-size enforcement, and phpcbf auto-commit on PRs.
+- `.github/workflows/deploy.yml`: dropped redundant file-existence and PHP-syntax checks now covered by the reusable CI; kept PSA_VERSION constant check.
+- `includes/class-psa-admin.php`: removed dead backward-compat proxy methods (all delegated to `PSA_Admin_Page`; zero external callers). File reduced from 327 → 290 lines (estate 300-line rule compliance).
+- `includes/class-psa-ai-generator.php`: removed untested backward-compat proxies (save_peptide_meta, assign_category_term); retained build_validation_prompt and build_generation_prompt as tested proxies (AIGeneratorTest uses reflection). Section headers condensed. File 309 → 299 lines.
+- `includes/class-psa-search.php`: removed dead backward-compat proxy methods (all delegated to `PSA_Search_Handler`; zero external callers). File reduced from 307 → 294 lines.
+- `peptide-search-ai.php`: synced `PSA_VERSION` constant (was stuck at 4.5.0) with plugin header (was 4.6.0); both now 4.7.0.
+- `package.json` / `package-lock.json`: added minimal npm manifest (no dependencies) so the reusable `lint-js` job can run `npm ci` and fall back to `node --check` on the three JS asset files.
+
 ## [4.6.0] — 2026-04-26
 
 ### Changed

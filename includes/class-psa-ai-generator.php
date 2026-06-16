@@ -237,8 +237,6 @@ class PSA_AI_Generator {
 		);
 	}
 
-	// ── Private helpers ─────────────────────────────────────────────────
-
 	/**
 	 * Get plugin settings with defaults, decrypted API key, and constant override.
 	 *
@@ -289,21 +287,13 @@ class PSA_AI_Generator {
 		return true;
 	}
 
-	// ── Backward-compatible proxies ─────────────────────────────────────
-
-	/** @see PSA_AI_Content::build_validation_prompt() */
+	/** @see PSA_AI_Content::build_validation_prompt() — kept for test reflection. */
 	public static function build_validation_prompt( string $name ): string {
-		return PSA_AI_Content::build_validation_prompt( $name ); }
+		return PSA_AI_Content::build_validation_prompt( $name );
+	}
 
-	/** @see PSA_AI_Content::build_generation_prompt() */
+	/** @see PSA_AI_Content::build_generation_prompt() — kept for test reflection. */
 	public static function build_generation_prompt( string $peptide_name ): string {
-		return PSA_AI_Content::build_generation_prompt( $peptide_name ); }
-
-	/** @see PSA_AI_Content::save_peptide_meta() */
-	public static function save_peptide_meta( int $post_id, array $ai_data, ?array $pubchem_data ): void {
-		PSA_AI_Content::save_peptide_meta( $post_id, $ai_data, $pubchem_data ); }
-
-	/** @see PSA_AI_Content::assign_category_term() */
-	public static function assign_category_term( int $post_id, array $ai_data ): void {
-		PSA_AI_Content::assign_category_term( $post_id, $ai_data ); }
+		return PSA_AI_Content::build_generation_prompt( $peptide_name );
+	}
 }

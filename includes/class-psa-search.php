@@ -290,18 +290,4 @@ class PSA_Search {
 			'source'            => get_post_meta( $post->ID, 'psa_source', true ),
 		);
 	}
-
-	// ── Backward-compatible proxies ─────────────────────────────────────
-
-	/** @see PSA_Search_Handler::ajax_search() */
-	public static function ajax_search(): void {
-		PSA_Search_Handler::ajax_search(); }
-
-	/** @see PSA_Search_Handler::create_pending_placeholder() */
-	public static function create_pending_placeholder( string $peptide_name ) {
-		return PSA_Search_Handler::create_pending_placeholder( $peptide_name ); }
-
-	/** @see PSA_Search_Handler::schedule_background_generation() */
-	public static function schedule_background_generation( int $post_id, string $peptide_name ): void {
-		PSA_Search_Handler::schedule_background_generation( $post_id, $peptide_name ); }
 }
