@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: deploy-peptide-search-ai
@@ -15,6 +15,7 @@ jobs:
   test:
     name: Pre-deploy tests
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
 
   validate:
     name: Validate deployment
@@ -36,7 +37,7 @@ jobs:
   deploy:
     name: Deploy (shared pipeline)
     needs: validate
-    uses: peptiderepo/peptide-e2e/.github/workflows/deploy-app.yml@main
+    uses: peptide-repo/peptide-e2e/.github/workflows/deploy-app.yml@main
     with:
       target_path: wp-content/plugins/peptide-search-ai
     secrets: inherit
